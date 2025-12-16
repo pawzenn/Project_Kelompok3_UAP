@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "512307243514",
+    "project_id": "lalapanbangajey",
+    "storage_bucket": "lalapanbangajey.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:512307243514:android:ee95ee71231b57026ddc43",
+        "android_client_info": {
+          "package_name": "com.mobile.modul5"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvmUlJMlJHcTNHSJuEZvTaaun9ou7ZEYo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

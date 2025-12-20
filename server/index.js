@@ -1,8 +1,5 @@
 require("dotenv").config();
 
-const fs = require("fs");
-const path = require("path");
-
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -21,8 +18,8 @@ const PORT = process.env.PORT || 3000;
 const SUPA_URL = process.env.SUPA_URL || process.env.SUPABASE_URL;
 const SUPA_SERVICE_ROLE_KEY = process.env.SUPA_SERVICE_ROLE_KEY;
 
-// Firebase Admin via file path
-const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+// Firebase Admin via JSON env (bukan file path)
+const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
 if (!SUPA_URL) {
   console.error("❌ Missing env: SUPA_URL (or SUPABASE_URL)");
@@ -32,18 +29,18 @@ if (!SUPA_SERVICE_ROLE_KEY) {
   console.error("❌ Missing env: SUPA_SERVICE_ROLE_KEY");
   process.exit(1);
 }
-if (!FIREBASE_SERVICE_ACCOUNT_PATH) {
-  console.error("❌ Missing env: FIREBASE_SERVICE_ACCOUNT_PATH");
+if (!FIREBASE_SERVICE_ACCOUNT_JSON) {
+  console.error("❌ Missing env: FIREBASE_SERVICE_ACCOUNT_JSON");
   process.exit(1);
 }
 
-// ---------- INIT FIREBASE ADMIN (PATH) ----------
+// ---------- INIT FIREBASE ADMIN (ENV JSON) ----------
 let serviceAccount;
 try {
-  const jsonPath = path.resolve(__dirname, FIREBASE_SERVICE_ACCOUNT_PATH);
-  serviceAccount = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+  // Railway kadang menyimpan value dengan newline/escape, tapi JSON.parse aman
+  serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON);
 } catch (e) {
-  console.error("❌ Failed to read Firebase service account JSON:", e.message);
+  console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:", e.message);
   process.exit(1);
 }
 
@@ -131,5 +128,5 @@ app.post("/api/orders", requireAuth, async (req, res) => {
 
 // ---------- START ----------
 app.listen(PORT, () => {
-  console.log(`✅ Server listening on http://localhost:${PORT}`);
+  console.log(`✅ Server listening on port ${PORT}`);
 });

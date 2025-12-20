@@ -1,0 +1,27 @@
+# === Flutter / Dart ===
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+build/
+coverage/
+
+# === macOS ===
+.DS_Store
+
+# === IDEs ===
+.idea/
+*.iml
+.vscode/
+
+# === Node ===
+node_modules/
+
+# === ENV & secrets ===
+.env
+server/.env
+server/firebase-service-account.json
+
+# === Misc ===
+lib.zip

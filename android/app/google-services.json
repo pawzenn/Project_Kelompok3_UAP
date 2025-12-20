@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "369587275430",
+    "firebase_url": "https://prak-mobile2025-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "prak-mobile2025",
+    "storage_bucket": "prak-mobile2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:369587275430:android:70ae1bf7f2f5bc86931667",
+        "android_client_info": {
+          "package_name": "com.mobile.modul6"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoUHKVmvNhi9KtKiV_jfMuiFoRAx_TyCA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:369587275430:android:2017c806a6894685931667",
+        "android_client_info": {
+          "package_name": "com.project.uap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoUHKVmvNhi9KtKiV_jfMuiFoRAx_TyCA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

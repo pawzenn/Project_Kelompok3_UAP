@@ -1,0 +1,26 @@
+{
+  "name": "project_uap_api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "firebase-admin": "^11.10.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "description": "Simple Express API to bridge Firebase Auth and Supabase.",
+  "devDependencies": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

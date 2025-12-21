@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -13,13 +14,14 @@ class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
   static const Color _menuGreen = Color(0xFF3E7C3E);
+  static const Color _darkGreen = Color(0xFF144100);
 
   @override
   Widget build(BuildContext context) {
     final bottomH = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF3E7C3E),
+      backgroundColor: _menuGreen,
       extendBodyBehindAppBar: true,
       floatingActionButton: Container(
         decoration: BoxDecoration(
@@ -39,68 +41,12 @@ class HomeView extends GetView<HomeController> {
           onPressed: () => Get.toNamed(AppRoutes.cart),
           child: const Icon(
             Icons.shopping_cart_outlined,
-            color: Color(0xFF1C4A0B),
+            color: Color(0xFF22590A),
             size: 28,
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF22590A),
-              Color(0xFF1C4A0B),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 25,
-              offset: const Offset(0, -8),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomH),
-            child: SizedBox(
-              height: 72,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _NavItem(
-                    icon: Icons.home_rounded,
-                    label: 'Beranda',
-                    active: true,
-                    onTap: () {},
-                  ),
-                  _NavItem(
-                    icon: Icons.receipt_long_rounded,
-                    label: 'Pesanan',
-                    active: false,
-                    onTap: () => Get.toNamed(AppRoutes.orders),
-                  ),
-                  _NavItem(
-                    icon: Icons.local_offer_rounded,
-                    label: 'Promo',
-                    active: false,
-                    onTap: () => Get.toNamed(AppRoutes.promo),
-                  ),
-                  _NavItem(
-                    icon: Icons.person_rounded,
-                    label: 'Profil',
-                    active: false,
-                    onTap: () => Get.toNamed(AppRoutes.profile),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      bottomNavigationBar: _buildBottomNav(bottomH),
       body: Obx(() {
         if (controller.isLoading.value) {
           return const Center(
@@ -111,240 +57,190 @@ class HomeView extends GetView<HomeController> {
         }
 
         if (controller.errorMessage.value.isNotEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    size: 64,
-                    color: Colors.white.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    controller.errorMessage.value,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 16,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: controller.refreshProducts,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF22590A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Coba Lagi',
-                      style: TextStyle(fontFamily: 'Montserrat'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+          return _buildErrorState();
         }
 
         final items = controller.filteredProducts;
 
         return CustomScrollView(
           slivers: [
-            // ✅ Header pinned (brand + search + notif)
-            const _PinnedHeaderSliver(menuGreen: _menuGreen),
+            // 1. Carousel + Header
+            const _HeroCarouselWithHeaderSliver(),
 
-            // ✅ Hero carousel (geser auto + manual) di bawah header
-            const _HeroCarouselSliver(menuGreen: _menuGreen),
+            // 2. Container Menu dengan Rounded Top
+            SliverToBoxAdapter(
+              child: Container(
+                // ✅ FIX: Tarik lebih ke atas untuk overlap sempurna
+                transform: Matrix4.translationValues(0, -50, 0),
+                decoration: const BoxDecoration(
+                  color: _darkGreen,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(40),
+                    topRight: Radius.circular(40),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black45,
+                      blurRadius: 20,
+                      offset: Offset(0, -8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Header DAFTAR MENU
+                    const Padding(
+                      padding: EdgeInsets.only(top: 35, bottom: 20),
+                      child: Text(
+                        'DAFTAR MENU',
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFE6F06A),
+                          letterSpacing: 2.5,
+                          fontFamily: 'Montserrat',
+                        ),
+                      ),
+                    ),
 
-            // ✅ DAFTAR MENU pinned (sticky) & full background #3E7C3E
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _DaftarMenuHeaderDelegate(
-                height: 98,
-                bg: _menuGreen,
+                    // Grid Menu
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                      child: items.isEmpty
+                          ? _buildNoItemsState()
+                          : GridView.builder(
+                              itemCount: items.length,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 16,
+                                crossAxisSpacing: 16,
+                                childAspectRatio: 0.72,
+                              ),
+                              itemBuilder: (context, i) {
+                                final p = items[i];
+                                return _MenuCardNew(
+                                  title: p.name,
+                                  price: p.price,
+                                  imageUrl: p.imageUrl,
+                                  onTap: () {
+                                    Get.bottomSheet(
+                                      MenuDetailSheet(product: p),
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ),
-
-            // ✅ Body menu: background juga sama (#3E7C3E), tanpa subtext
-            if (items.isEmpty)
-              SliverToBoxAdapter(
-                child: Container(
-                  color: _menuGreen,
-                  padding: const EdgeInsets.fromLTRB(22, 40, 22, 120),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.search_off_rounded,
-                        size: 76,
-                        color: Colors.white.withOpacity(0.38),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Tidak ada menu ditemukan',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.82),
-                          fontSize: 16,
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Coba kata kunci yang berbeda ya.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.62),
-                          fontSize: 13,
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-                sliver: SliverToBoxAdapter(
-                  child: Container(
-                    color: _menuGreen,
-                    child: GridView.builder(
-                      itemCount: items.length,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 18,
-                        crossAxisSpacing: 18,
-                        childAspectRatio: 0.68,
-                      ),
-                      itemBuilder: (_, i) {
-                        final p = items[i];
-                        return MenuCard(
-                          title: p.name,
-                          price: p.price,
-                          imageUrl: p.imageUrl,
-                          onTap: () {
-                            Get.bottomSheet(
-                              MenuDetailSheet(product: p),
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              barrierColor: Colors.black.withOpacity(0.35),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
           ],
         );
       }),
     );
   }
-}
 
-// ================== PINNED HEADER (BRAND + SEARCH + NOTIF) ==================
-
-class _PinnedHeaderSliver extends StatelessWidget {
-  final Color menuGreen;
-  const _PinnedHeaderSliver({required this.menuGreen});
-
-  @override
-  Widget build(BuildContext context) {
-    final safeTop = MediaQuery.of(context).padding.top;
-
-    return SliverAppBar(
-      pinned: true,
-      backgroundColor: menuGreen, // ✅ saat scroll FULL hijau, bukan tembus foto
-      elevation: 0,
-      automaticallyImplyLeading: false,
-      toolbarHeight: 110,
-      flexibleSpace: Padding(
-        padding: EdgeInsets.only(top: safeTop + 14, left: 20, right: 16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Brand kiri
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildBottomNav(double bottomH) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF22590A),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, -8)),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomH),
+          child: SizedBox(
+            height: 70,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Text(
-                  'Lalapan',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.97),
-                    fontSize: 30,
-                    fontWeight: FontWeight.w400,
-                    fontStyle: FontStyle.italic,
-                    fontFamily: 'Judson',
-                    letterSpacing: 0.6,
-                    height: 1.0,
-                  ),
-                ),
-                Text(
-                  'Bang Ajey',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    fontStyle: FontStyle.italic,
-                    fontFamily: 'Judson',
-                    letterSpacing: 0.6,
-                    height: 1.0,
-                  ),
-                ),
+                _NavItem(
+                    icon: Icons.home_rounded,
+                    label: 'Beranda',
+                    active: true,
+                    onTap: () {}),
+                _NavItem(
+                    icon: Icons.receipt_long_rounded,
+                    label: 'Pesanan',
+                    active: false,
+                    onTap: () => Get.toNamed(AppRoutes.orders)),
+                _NavItem(
+                    icon: Icons.local_offer_rounded,
+                    label: 'Promo',
+                    active: false,
+                    onTap: () => Get.toNamed(AppRoutes.promo)),
+                _NavItem(
+                    icon: Icons.person_rounded,
+                    label: 'Profil',
+                    active: false,
+                    onTap: () => Get.toNamed(AppRoutes.profile)),
               ],
             ),
-
-            const SizedBox(width: 14),
-
-            // Search bar (UI tetap, hanya layout)
-            Expanded(
-              child: _SearchBar(
-                onChanged: Get.find<HomeController>().onSearchChanged,
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            const _NotifButton(),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline_rounded,
+              size: 64, color: Colors.white.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text(controller.errorMessage.value,
+              style: const TextStyle(
+                  color: Colors.white, fontFamily: 'Montserrat')),
+          const SizedBox(height: 24),
+          ElevatedButton(
+              onPressed: controller.refreshProducts,
+              child: const Text('Coba Lagi')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoItemsState() {
+    return Column(
+      children: [
+        Icon(Icons.search_off_rounded,
+            size: 76, color: Colors.white.withOpacity(0.38)),
+        const SizedBox(height: 18),
+        const Text('Tidak ada menu ditemukan',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
 }
 
-// ================== HERO CAROUSEL SLIVER (AUTO + MANUAL) ==================
+// ================== CAROUSEL WIDGET ==================
 
-class _HeroCarouselSliver extends StatefulWidget {
-  final Color menuGreen;
-  const _HeroCarouselSliver({required this.menuGreen});
-
+class _HeroCarouselWithHeaderSliver extends StatefulWidget {
+  const _HeroCarouselWithHeaderSliver();
   @override
-  State<_HeroCarouselSliver> createState() => _HeroCarouselSliverState();
+  State<_HeroCarouselWithHeaderSliver> createState() =>
+      _HeroCarouselWithHeaderSliverState();
 }
 
-class _HeroCarouselSliverState extends State<_HeroCarouselSliver> {
+class _HeroCarouselWithHeaderSliverState
+    extends State<_HeroCarouselWithHeaderSliver> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _autoTimer;
-
   final List<String> _heroImages = [
     'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1400&q=80',
     'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=80',
@@ -354,19 +250,16 @@ class _HeroCarouselSliverState extends State<_HeroCarouselSliver> {
   @override
   void initState() {
     super.initState();
-    _restartAuto();
+    _startTimer();
   }
 
-  void _restartAuto() {
+  void _startTimer() {
     _autoTimer?.cancel();
     _autoTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      final next = (_currentPage + 1) % _heroImages.length;
       if (_pageController.hasClients) {
-        _pageController.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 420),
-          curve: Curves.easeInOut,
-        );
+        _pageController.animateToPage((_currentPage + 1) % _heroImages.length,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut);
       }
     });
   }
@@ -380,322 +273,99 @@ class _HeroCarouselSliverState extends State<_HeroCarouselSliver> {
 
   @override
   Widget build(BuildContext context) {
+    final safeTop = MediaQuery.of(context).padding.top;
     return SliverToBoxAdapter(
-      child: Stack(
-        children: [
-          SizedBox(
-            height: 320,
-            child: NotificationListener<UserScrollNotification>(
-              onNotification: (notif) {
-                if (notif.direction != ScrollDirection.idle) _restartAuto();
-                return false;
-              },
+      child: SizedBox(
+        // ✅ FIX: Tambah tinggi untuk memberi ruang overlap
+        height: 280 + safeTop,
+        child: Stack(
+          children: [
+            // Carousel Images
+            Positioned.fill(
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _heroImages.length,
-                onPageChanged: (i) {
-                  setState(() => _currentPage = i);
-                  _restartAuto();
-                },
-                itemBuilder: (context, i) {
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(_heroImages[i], fit: BoxFit.cover),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.25),
-                              Colors.black.withOpacity(0.70),
-                            ],
-                          ),
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                itemBuilder: (context, i) => Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(_heroImages[i], fit: BoxFit.cover),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.3),
+                            Colors.black.withOpacity(0.6),
+                          ],
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          height: 64,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                widget.menuGreen.withOpacity(0.95),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // Menu Favorit + dots (hanya di hero)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 26,
-            child: Column(
-              children: [
-                Text(
-                  'Menu Favorit',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.97),
-                    fontSize: 24,
-                    fontFamily: 'JimNightshade',
-                    letterSpacing: 0.8,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.5),
-                        offset: const Offset(0, 2),
-                        blurRadius: 8,
-                      ),
+            // Header: Logo & Search
+            Positioned(
+              top: safeTop + 12,
+              left: 16,
+              right: 16,
+              child: Row(
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Lalapan',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontStyle: FontStyle.italic,
+                              fontFamily: 'Judson')),
+                      Text('Bang Ajey',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                              fontFamily: 'Judson')),
                     ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                _Dots(currentPage: _currentPage),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ================== PINNED "DAFTAR MENU" HEADER ==================
-
-class _DaftarMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final double height;
-  final Color bg;
-
-  _DaftarMenuHeaderDelegate({
-    required this.height,
-    required this.bg,
-  });
-
-  @override
-  double get minExtent => height;
-
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: bg, // ✅ full sama (bukan beda shade)
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
-      child: Center(
-        child: Text(
-          'DAFTAR MENU',
-          style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.w900,
-            color: const Color(0xFFE6F56C),
-            letterSpacing: 2.2,
-            fontFamily: 'Montserrat',
-            shadows: [
-              Shadow(
-                color: Colors.black.withOpacity(0.35),
-                offset: const Offset(0, 3),
-                blurRadius: 6,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _DaftarMenuHeaderDelegate oldDelegate) {
-    return oldDelegate.height != height || oldDelegate.bg != bg;
-  }
-}
-
-// ================== SMALL WIDGETS ==================
-
-class _SearchBar extends StatelessWidget {
-  final ValueChanged<String> onChanged;
-  const _SearchBar({required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.26),
-          width: 1.4,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.16),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.search_rounded,
-            color: Colors.white.withOpacity(0.85),
-            size: 22,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              onChanged: onChanged,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13.5,
-                fontFamily: 'Montserrat',
-                fontWeight: FontWeight.w500,
-              ),
-              decoration: const InputDecoration(
-                hintText: 'Cari menu…',
-                hintStyle: TextStyle(
-                  color: Colors.white60,
-                  fontSize: 13,
-                  fontFamily: 'Montserrat',
-                  fontWeight: FontWeight.w400,
-                ),
-                border: InputBorder.none,
-                isDense: true,
+                  const SizedBox(width: 15),
+                  Expanded(
+                      child: _SearchBar(
+                          onChanged:
+                              Get.find<HomeController>().onSearchChanged)),
+                  const SizedBox(width: 10),
+                  const _NotifButton(),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _NotifButton extends StatelessWidget {
-  const _NotifButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withOpacity(0.26),
-          width: 1.4,
-        ),
-      ),
-      child: IconButton(
-        onPressed: () => Get.snackbar(
-          'Notifikasi',
-          'Belum ada notifikasi baru',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.white,
-          colorText: const Color(0xFF1C4A0B),
-        ),
-        icon: Icon(
-          Icons.notifications_none_rounded,
-          color: Colors.white.withOpacity(0.78),
-          size: 26,
-        ),
-      ),
-    );
-  }
-}
-
-class _Dots extends StatelessWidget {
-  final int currentPage;
-  const _Dots({required this.currentPage});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (index) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          width: currentPage == index ? 30 : 8,
-          height: 8,
-          margin: const EdgeInsets.symmetric(horizontal: 5),
-          decoration: BoxDecoration(
-            color: currentPage == index
-                ? const Color(0xFFE6F06A)
-                : Colors.white.withOpacity(0.38),
-            borderRadius: BorderRadius.circular(999),
-            boxShadow: currentPage == index
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFE6F06A).withOpacity(0.45),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? Colors.white.withOpacity(0.18) : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: active ? const Color(0xFFE6F56C) : Colors.white70,
-              size: 28,
-            ),
-            const SizedBox(height: 7),
-            Text(
-              label,
-              style: TextStyle(
-                color: active ? const Color(0xFFE6F56C) : Colors.white70,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 10.5,
-                letterSpacing: 0.4,
-                fontFamily: 'Montserrat',
+            // Text: Menu Favorit & Dots
+            Positioned(
+              bottom: 70,
+              left: 0,
+              right: 0,
+              child: Column(
+                children: [
+                  const Text('Menu Favorit',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontFamily: 'JimNightshade',
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black54,
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ])),
+                  const SizedBox(height: 12),
+                  _Dots(currentPage: _currentPage),
+                ],
               ),
             ),
           ],
@@ -705,35 +375,194 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _GlowCircle extends StatelessWidget {
-  final double size;
-  final double opacity;
-  final double blur;
-  final double spread;
+// ================== MENU CARD ==================
 
-  const _GlowCircle({
-    required this.size,
-    required this.opacity,
-    required this.blur,
-    required this.spread,
-  });
+class _MenuCardNew extends StatelessWidget {
+  final String title;
+  final int price;
+  final String imageUrl;
+  final VoidCallback onTap;
+
+  const _MenuCardNew(
+      {required this.title,
+      required this.price,
+      required this.imageUrl,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 5))
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
+                child: imageUrl.isEmpty
+                    ? Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.fastfood, color: Colors.grey))
+                    : Image.network(imageUrl, fit: BoxFit.cover),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: const Color(0xFF144100),
+                        borderRadius: BorderRadius.circular(8)),
+                    child: Text('Rp ${_formatPrice(price)}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+  }
+}
+
+// ================== SMALL UTILS ==================
+
+class _SearchBar extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+  const _SearchBar({required this.onChanged});
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withOpacity(opacity),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.white.withOpacity(opacity + 0.06),
-            blurRadius: blur,
-            spreadRadius: spread,
-          ),
+          color: Colors.white.withOpacity(0.25),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5)),
+      child: Row(
+        children: [
+          const Icon(Icons.search, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+              child: TextField(
+                  onChanged: onChanged,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: const InputDecoration(
+                      hintText: 'Cari menu...',
+                      hintStyle: TextStyle(color: Colors.white70),
+                      border: InputBorder.none,
+                      isDense: true))),
         ],
       ),
+    );
+  }
+}
+
+class _NotifButton extends StatelessWidget {
+  const _NotifButton();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.25),
+            shape: BoxShape.circle,
+            border:
+                Border.all(color: Colors.white.withOpacity(0.4), width: 1.5)),
+        child: const Icon(Icons.notifications_none,
+            color: Colors.white, size: 22));
+  }
+}
+
+class _Dots extends StatelessWidget {
+  final int currentPage;
+  const _Dots({required this.currentPage});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+          3,
+          (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 5),
+                width: currentPage == i ? 28 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                    color: currentPage == i
+                        ? const Color(0xFFE6F06A)
+                        : Colors.white.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: currentPage == i
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFFE6F06A).withOpacity(0.5),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            )
+                          ]
+                        : null),
+              )),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  const _NavItem(
+      {required this.icon,
+      required this.label,
+      required this.active,
+      required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon,
+            color: active ? const Color(0xFFE6F56C) : Colors.white60, size: 24),
+        const SizedBox(height: 4),
+        Text(label,
+            style: TextStyle(
+                color: active ? const Color(0xFFE6F56C) : Colors.white60,
+                fontSize: 10,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
+      ]),
     );
   }
 }

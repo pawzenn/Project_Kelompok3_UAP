@@ -54,3 +54,27 @@ flutter:
   assets:
     - assets/sounds/
     - .env
+
+
+  fonts:
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-Regular.ttf
+        - asset: assets/fonts/Montserrat-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Montserrat-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Montserrat-ExtraBold.ttf
+          weight: 800
+    
+    - family: Judson
+      fonts:
+        - asset: assets/fonts/Judson-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Judson-Bold.ttf
+          weight: 700
+          style: italic
+    
+    - family: JimNightshade
+      fonts:
+        - asset: assets/fonts/JimNightshade-Regular.ttf

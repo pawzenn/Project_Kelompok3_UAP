@@ -10,7 +10,6 @@ class TrackingMapView extends GetView<TrackingController> {
   const TrackingMapView({super.key});
 
   static const _bgGreen = Color(0xFF22590A);
-  static const _lime = Color(0xFFE6F06A);
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +18,11 @@ class TrackingMapView extends GetView<TrackingController> {
       appBar: AppBar(
         backgroundColor: _bgGreen.withOpacity(0.70),
         elevation: 0,
-        title: const Text('Status Pesanan'),
+        title: const Text(
+          'Status Pesanan',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Obx(() {
         final u = controller.userLatLng.value;
@@ -41,10 +44,8 @@ class TrackingMapView extends GetView<TrackingController> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            Obx(() => _OrderHeader(order: controller.order)),
-            const SizedBox(height: 18),
-
-            // MAP (tidak diubah)
+            _OrderHeader(order: controller.order),
+            const SizedBox(height: 14),
             Container(
               height: 340,
               decoration: BoxDecoration(
@@ -63,49 +64,36 @@ class TrackingMapView extends GetView<TrackingController> {
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.lalapan',
                   ),
-
-                  // Route polyline
                   PolylineLayer(
                     polylines: [
                       Polyline(
                         points: points,
                         strokeWidth: 5,
-                        color: _lime,
+                        color: const Color(0xFFF2FF00),
                       ),
                     ],
                   ),
-
-                  // Markers
                   MarkerLayer(
                     markers: [
                       Marker(
                         point: u,
                         width: 44,
                         height: 44,
-                        child: const Icon(
-                          Icons.my_location,
-                          color: Colors.blue,
-                          size: 34,
-                        ),
+                        child: const Icon(Icons.my_location,
+                            color: Colors.blue, size: 34),
                       ),
                       Marker(
                         point: r,
                         width: 44,
                         height: 44,
-                        child: const Icon(
-                          Icons.store,
-                          color: Colors.red,
-                          size: 36,
-                        ),
+                        child: const Icon(Icons.store,
+                            color: Colors.red, size: 36),
                       ),
                     ],
                   ),
-
-                  // Loading overlay
                   Obx(() {
-                    if (!controller.isLoadingRoute.value) {
+                    if (!controller.isLoadingRoute.value)
                       return const SizedBox.shrink();
-                    }
                     return Positioned.fill(
                       child: Container(
                         color: Colors.black26,
@@ -116,9 +104,7 @@ class TrackingMapView extends GetView<TrackingController> {
                 ],
               ),
             ),
-
             const SizedBox(height: 10),
-
             if (controller.error.value.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(12),
@@ -132,9 +118,7 @@ class TrackingMapView extends GetView<TrackingController> {
                   style: const TextStyle(color: Colors.white70),
                 ),
               ),
-
             const SizedBox(height: 10),
-
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -158,60 +142,77 @@ class _OrderHeader extends StatelessWidget {
   final Map<String, dynamic> order;
   const _OrderHeader({required this.order});
 
-  static const _bgGreen = Color(0xFF22590A);
-  static const _lime = Color(0xFFE6F06A);
+  static const _green = Color(0xFF22590A);
+  static const _lime = Color(0xFFF2FF00);
 
-  String _mapStatusLabel(String raw) {
-    final s = raw.toLowerCase().trim();
+  // LOGIKA ID TETAP SAMA (Logika kamu sebelumnya)
+  String _pickOrderId(Map<String, dynamic> o) {
+    final v = o['id'] ??
+        o['order_id'] ??
+        o['orders_id'] ??
+        o['orderId'] ??
+        o['orderID'];
+    final s = (v ?? '').toString().trim();
+    return s.isEmpty ? '-' : s;
+  }
 
-    if (s == 'received') return 'Pesanan masuk';
-    if (s == 'processing') return 'Pesanan diproses';
-    if (s == 'ready') return 'Pesanan selesai';
+  // LOGIKA STATUS DENGAN MAPPING (Seperti di Order Detail)
+  String _pickStatus(Map<String, dynamic> o) {
+    final s = (o['status'] ?? '').toString().toLowerCase().trim();
 
-    // fallback jika kosong / nilai lain
-    if (s.isEmpty) return '-';
-    return raw;
+    if (s == 'received') return 'PESANAN DIPROSES';
+    if (s == 'processing') return 'SEDANG DISIAPKAN';
+    if (s == 'ready') return 'SIAP DIAMBIL';
+    if (s == 'dikirim') return 'DALAM PENGIRIMAN';
+
+    return s.isEmpty ? '-' : s.toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
-    final orderId = (order['id'] ?? '').toString();
-    final rawStatus = (order['status'] ?? '').toString();
-    final statusLabel = _mapStatusLabel(rawStatus);
+    final orderId = _pickOrderId(order);
+    final status = _pickStatus(order);
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _bgGreen.withOpacity(0.70),
+        color: _green,
         borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const Icon(Icons.receipt_long, color: Colors.white),
-          const SizedBox(width: 10),
+          const Icon(Icons.receipt_long, color: Colors.white, size: 22),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ID Pesanan: ${orderId.isEmpty ? '-' : orderId}',
+                  'ID Pesanan: $orderId',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 18,
+                    fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Status: $statusLabel',
+                  'Status: $status',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _lime,
                     fontWeight: FontWeight.w900,
-                    fontSize: 18,
+                    fontSize: 16,
                     letterSpacing: 0.6,
                   ),
                 ),

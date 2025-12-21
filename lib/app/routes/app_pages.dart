@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:project_uap/features/notifications/controller/notification_controller.dart';
 
 import '../../features/auth/bindings/auth_binding.dart';
 import '../../features/auth/pages/auth_gate_page.dart';
@@ -28,6 +29,7 @@ import '../../features/promo/bindings/promo_binding.dart';
 import '../../features/admin/pages/admin_orders_view.dart';
 import '../../features/admin/bindings/admin_binding.dart';
 import '../../features/admin/pages/admin_shell_view.dart';
+import '../../features/notifications/pages/notifications_view.dart';
 
 import 'app_routes.dart';
 
@@ -98,6 +100,13 @@ class AppPages {
       name: AppRoutes.admin,
       page: () => const AdminShellView(),
       binding: AdminBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.notifications,
+      page: () => const NotificationsView(),
+      binding: BindingsBuilder(() {
+        Get.put(NotificationController());
+      }),
     ),
 
     GetPage(

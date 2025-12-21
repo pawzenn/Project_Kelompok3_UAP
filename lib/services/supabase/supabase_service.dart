@@ -8,21 +8,54 @@ class SupabaseService {
   SupabaseService._();
   static final SupabaseService instance = SupabaseService._();
 
-  late final SupabaseClient client;
+  SupabaseClient? _client;
+  bool _initialized = false;
+
+  SupabaseClient get client {
+    final c = _client;
+    if (c == null) {
+      throw Exception(
+        'SupabaseService belum di-init. Pastikan panggil await SupabaseService.instance.init() di main() sebelum runApp().',
+      );
+    }
+    return c;
+  }
 
   Future<void> init() async {
+    if (_initialized && _client != null)
+      return; // ✅ biar aman dipanggil berkali-kali
+    _initialized = true;
+
     await dotenv.load(fileName: ".env");
 
     final url = dotenv.env['SUPABASE_URL'];
     final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
 
-    if (url == null || anonKey == null) {
+    if (url == null || anonKey == null || url.isEmpty || anonKey.isEmpty) {
       throw Exception(
           'SUPABASE_URL atau SUPABASE_ANON_KEY belum diset di .env');
     }
 
-    await Supabase.initialize(url: url, anonKey: anonKey);
-    client = Supabase.instance.client;
+    // ✅ Supabase.initialize cuma boleh sekali (kalau sudah pernah init, jangan init lagi)
+    try {
+      if (Supabase.instance.client.auth.currentSession == null &&
+          Supabase.instance.client == null) {
+        // biasanya kondisi ini tidak terjadi, jadi pakai try-catch saja
+      }
+    } catch (_) {
+      // kalau Supabase.instance belum siap, lanjut initialize di bawah
+    }
+
+    // Cara paling aman: cek sudah initialize atau belum
+    // SupabaseFlutter tidak expose flag, jadi kita protect pakai try-catch:
+    try {
+      // Kalau belum init, ini aman
+      await Supabase.initialize(url: url, anonKey: anonKey);
+    } catch (_) {
+      // Kalau sudah init, akan throw -> kita abaikan
+    }
+
+    _client = Supabase.instance.client;
   }
 
   // =========================================================
@@ -56,8 +89,7 @@ class SupabaseService {
   }
 
   // =========================================================
-  // PROMOS (CRUD)
-  // Table: public.promos
+  // PROMOS (CRUD) Table: public.promos
   // =========================================================
   Future<List<Promo>> fetchPromos({bool onlyActive = false}) async {
     var q = client.from('promos').select('*');
@@ -67,7 +99,6 @@ class SupabaseService {
     }
 
     final res = await q.order('created_at', ascending: false);
-
     final list = (res as List).cast<Map<String, dynamic>>();
     return list.map((e) => Promo.fromMap(e)).toList();
   }
@@ -75,7 +106,6 @@ class SupabaseService {
   Future<Promo> createPromo(Promo promo) async {
     final res =
         await client.from('promos').insert(promo.toInsert()).select().single();
-
     return Promo.fromMap((res as Map).cast<String, dynamic>());
   }
 

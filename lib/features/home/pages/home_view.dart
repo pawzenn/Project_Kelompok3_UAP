@@ -1,21 +1,20 @@
-import 'dart:ui';
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 
 import '../controller/home_controller.dart';
-import '../widgets/menu_card.dart';
 import '../../menu/pages/menu_detail_sheet.dart';
 import '../../../app/routes/app_routes.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
-  static const Color _menuGreen = Color(0xFF3E7C3E);
   static const Color _darkGreen = Color(0xFF144100);
   static const Color _brightYellow = Color(0xFFE6F06A);
+
+  void _openNotifications() {
+    Get.toNamed(AppRoutes.notifications); // ✅ route riwayat notif
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,15 +64,10 @@ class HomeView extends GetView<HomeController> {
 
         return CustomScrollView(
           slivers: [
-            // Collapsible Header dengan Carousel
-            _CollapsibleCarouselHeaderSliver(),
-
-            // Container Menu
+            _CollapsibleCarouselHeaderSliver(onTapNotif: _openNotifications),
             SliverToBoxAdapter(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: _darkGreen,
-                ),
+                decoration: const BoxDecoration(color: _darkGreen),
                 child: Column(
                   children: [
                     const Padding(
@@ -89,8 +83,6 @@ class HomeView extends GetView<HomeController> {
                         ),
                       ),
                     ),
-
-                    // Grid Menu
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 98),
                       child: items.isEmpty
@@ -239,9 +231,10 @@ class HomeView extends GetView<HomeController> {
   }
 }
 
-// ================== COLLAPSIBLE CAROUSEL HEADER ==================
-
 class _CollapsibleCarouselHeaderSliver extends StatefulWidget {
+  final VoidCallback onTapNotif;
+  const _CollapsibleCarouselHeaderSliver({required this.onTapNotif});
+
   @override
   State<_CollapsibleCarouselHeaderSliver> createState() =>
       _CollapsibleCarouselHeaderSliverState();
@@ -262,11 +255,6 @@ class _CollapsibleCarouselHeaderSliverState
   @override
   void initState() {
     super.initState();
-    _startTimer();
-  }
-
-  void _startTimer() {
-    _autoTimer?.cancel();
     _autoTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (_pageController.hasClients) {
         _pageController.animateToPage(
@@ -294,9 +282,9 @@ class _CollapsibleCarouselHeaderSliverState
       floating: false,
       pinned: true,
       backgroundColor: const Color(0xFF144100),
+      automaticallyImplyLeading: false,
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
-          // Hitung progress collapse (0.0 = expanded, 1.0 = collapsed)
           final top = constraints.biggest.height;
           final progress =
               ((top - kToolbarHeight - safeTop) / (280 - kToolbarHeight))
@@ -306,7 +294,6 @@ class _CollapsibleCarouselHeaderSliverState
             background: Stack(
               fit: StackFit.expand,
               children: [
-                // Carousel Images
                 PageView.builder(
                   controller: _pageController,
                   itemCount: _heroImages.length,
@@ -330,8 +317,6 @@ class _CollapsibleCarouselHeaderSliverState
                     ],
                   ),
                 ),
-
-                // Header Content (Logo, Search, Notif)
                 Positioned(
                   top: safeTop + 10,
                   left: 16,
@@ -372,13 +357,11 @@ class _CollapsibleCarouselHeaderSliverState
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const _NotifButton(),
+                        _NotifButton(onTap: widget.onTapNotif), // ✅ clickable
                       ],
                     ),
                   ),
                 ),
-
-                // Center Text "Menu Favorit" & Dots
                 Positioned(
                   bottom: 40,
                   left: 0,
@@ -412,36 +395,31 @@ class _CollapsibleCarouselHeaderSliverState
                 ),
               ],
             ),
-            // Title yang muncul saat collapsed
-            titlePadding: EdgeInsets.only(left: 16, bottom: 16),
+            titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
             title: Opacity(
               opacity: 1 - progress,
-              child: Row(
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Lalapan',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontStyle: FontStyle.italic,
-                          fontFamily: 'Judson',
-                        ),
-                      ),
-                      Text(
-                        'Bang Ajey',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontStyle: FontStyle.italic,
-                          fontFamily: 'Judson',
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Lalapan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      fontFamily: 'Judson',
+                    ),
+                  ),
+                  Text(
+                    'Bang Ajey',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontStyle: FontStyle.italic,
+                      fontFamily: 'Judson',
+                    ),
                   ),
                 ],
               ),
@@ -449,25 +427,9 @@ class _CollapsibleCarouselHeaderSliverState
           );
         },
       ),
-      // Actions untuk search dan notif saat collapsed
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: _SearchBar(
-            onChanged: Get.find<HomeController>().onSearchChanged,
-            compact: true,
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.only(right: 16),
-          child: _NotifButton(),
-        ),
-      ],
     );
   }
 }
-
-// ================== MENU CARD ==================
 
 class _MenuCardNew extends StatelessWidget {
   final String title;
@@ -563,35 +525,12 @@ class _MenuCardNew extends StatelessWidget {
   }
 }
 
-// ================== SMALL UTILS ==================
-
 class _SearchBar extends StatelessWidget {
   final ValueChanged<String> onChanged;
-  final bool compact;
-
-  const _SearchBar({
-    required this.onChanged,
-    this.compact = false,
-  });
+  const _SearchBar({required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    if (compact) {
-      return Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.25),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white.withOpacity(0.4),
-            width: 1.5,
-          ),
-        ),
-        child: const Icon(Icons.search, color: Colors.white, size: 20),
-      );
-    }
-
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -626,23 +565,28 @@ class _SearchBar extends StatelessWidget {
 }
 
 class _NotifButton extends StatelessWidget {
-  const _NotifButton();
+  final VoidCallback onTap;
+  const _NotifButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withOpacity(0.4),
-          width: 1.5,
+    return InkWell(
+      onTap: onTap, // ✅
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.25),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.4),
+            width: 1.5,
+          ),
         ),
+        child:
+            const Icon(Icons.notifications_none, color: Colors.white, size: 22),
       ),
-      child:
-          const Icon(Icons.notifications_none, color: Colors.white, size: 22),
     );
   }
 }
@@ -667,15 +611,6 @@ class _Dots extends StatelessWidget {
                 ? const Color(0xFFE6F06A)
                 : Colors.white.withOpacity(0.5),
             borderRadius: BorderRadius.circular(4),
-            boxShadow: currentPage == i
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFE6F06A).withOpacity(0.5),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    )
-                  ]
-                : null,
           ),
         ),
       ),

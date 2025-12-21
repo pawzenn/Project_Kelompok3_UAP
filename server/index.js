@@ -17,16 +17,15 @@ app.use(bodyParser.json());
 // =================== ENV ===================
 const PORT = process.env.PORT || 3000;
 
-// Supabase (pakai salah satu: SUPA_URL atau SUPABASE_URL)
+// Supabase
 const SUPA_URL = process.env.SUPA_URL || process.env.SUPABASE_URL;
 const SUPA_SERVICE_ROLE_KEY = process.env.SUPA_SERVICE_ROLE_KEY;
 
-// Firebase (pilih salah satu)
+// Firebase Admin
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON; // recommended
 const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH; // optional
 
 // Admin access
-// contoh: "admin1@gmail.com,admin2@gmail.com"
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map((s) => s.trim().toLowerCase())
@@ -46,7 +45,6 @@ let serviceAccount = null;
 
 try {
   if (FIREBASE_SERVICE_ACCOUNT_JSON && FIREBASE_SERVICE_ACCOUNT_JSON.trim()) {
-    // FIREBASE_SERVICE_ACCOUNT_JSON harus string JSON utuh
     serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON);
   } else if (FIREBASE_SERVICE_ACCOUNT_PATH && FIREBASE_SERVICE_ACCOUNT_PATH.trim()) {
     const jsonPath = path.resolve(__dirname, FIREBASE_SERVICE_ACCOUNT_PATH);
@@ -63,7 +61,17 @@ try {
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
+  // Realtime Database URL harus ada kalau mau pakai RTDB
+  // Pastikan set ini di env:
+  // FIREBASE_DATABASE_URL=https://xxxxx-default-rtdb.asia-southeast1.firebasedatabase.app
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
 });
+
+if (!process.env.FIREBASE_DATABASE_URL) {
+  console.warn(
+    "⚠️ FIREBASE_DATABASE_URL belum diset. Fitur RTDB notif/token tidak akan jalan."
+  );
+}
 
 // =================== INIT SUPABASE ===================
 const supabase = createClient(SUPA_URL, SUPA_SERVICE_ROLE_KEY);
@@ -79,7 +87,7 @@ async function requireAuth(req, res, next) {
     }
 
     const decoded = await admin.auth().verifyIdToken(token);
-    req.user = decoded; // decoded.uid, decoded.email, decoded.admin (kalau custom claim)
+    req.user = decoded; // decoded.uid, decoded.email, decoded.admin (custom claim)
     return next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid token", error: err.message });
@@ -87,10 +95,8 @@ async function requireAuth(req, res, next) {
 }
 
 function isAdminUser(decoded) {
-  // Opsi A (paling aman): Firebase custom claims admin=true
   if (decoded && decoded.admin === true) return true;
 
-  // Opsi B (paling gampang): whitelist email dari ENV
   const email = (decoded.email || "").toLowerCase();
   if (email && ADMIN_EMAILS.includes(email)) return true;
 
@@ -137,6 +143,131 @@ function isValidStatus(s) {
   );
 }
 
+// =================== NOTIF HELPERS (RTDB + FCM) ===================
+
+/**
+ * Ambil semua token FCM milik user dari RTDB:
+ * /fcm_tokens/{uid}/{tokenKey} = true
+ */
+async function getUserFcmTokens(uid) {
+  if (!process.env.FIREBASE_DATABASE_URL) return [];
+  const snap = await admin.database().ref(`fcm_tokens/${uid}`).once("value");
+  const val = snap.val();
+  if (!val) return [];
+  return Object.keys(val);
+}
+
+/**
+ * Simpan inbox notifikasi ke RTDB:
+ * /notifications/{uid}/{notifId}
+ */
+async function saveInboxNotification(uid, payload) {
+  if (!process.env.FIREBASE_DATABASE_URL) return null;
+  const ref = admin.database().ref(`notifications/${uid}`).push();
+  await ref.set({
+    ...payload,
+    created_at: admin.database.ServerValue.TIMESTAMP,
+    read: false,
+  });
+  return ref.key;
+}
+
+function statusLabel(s) {
+  const st = normalizeStatus(s);
+  if (st === ORDER_STATUS.RECEIVED) return "Pesanan Diterima";
+  if (st === ORDER_STATUS.PROCESSING) return "Pesanan Diproses";
+  if (st === ORDER_STATUS.READY) return "Pesanan Siap";
+  return st;
+}
+
+/**
+ * Kirim notif ke 1 user (uid) + simpan ke inbox.
+ */
+async function notifyUser(uid, { title, body, data = {}, type = "general" }) {
+  const tokens = await getUserFcmTokens(uid);
+
+  // simpan inbox dulu (biar ada riwayat walau token kosong)
+  await saveInboxNotification(uid, {
+    title,
+    body,
+    type,
+    data,
+  });
+
+  if (!tokens.length) return { sent: 0, reason: "no_tokens" };
+
+  const message = {
+    tokens,
+    notification: { title, body },
+    data: {
+      type: String(type),
+      ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
+    },
+    android: {
+      notification: {
+        channelId: "promo_channel",
+        sound: "bang_ajeyy",
+      },
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: "bang_ajeyy.mp3",
+        },
+      },
+    },
+  };
+
+  const resp = await admin.messaging().sendEachForMulticast(message);
+
+  // bersihkan token invalid
+  const invalidTokens = [];
+  resp.responses.forEach((r, idx) => {
+    if (!r.success) {
+      const code = r.error?.code || "";
+      if (
+        code.includes("registration-token-not-registered") ||
+        code.includes("invalid-argument")
+      ) {
+        invalidTokens.push(tokens[idx]);
+      }
+    }
+  });
+
+  if (invalidTokens.length && process.env.FIREBASE_DATABASE_URL) {
+    const updates = {};
+    invalidTokens.forEach((t) => (updates[`fcm_tokens/${uid}/${t}`] = null));
+    await admin.database().ref().update(updates);
+  }
+
+  return { sent: resp.successCount, failed: resp.failureCount };
+}
+
+/**
+ * Broadcast notif promo ke banyak user:
+ * - Option A: simpan list uid di RTDB: /users/{uid} = true
+ * - Option B: simpan tokens global: /all_fcm_tokens/{token}=true
+ *
+ * Di sini dipakai OPTION A: /users
+ */
+async function broadcastPromo({ title, body, data = {} }) {
+  if (!process.env.FIREBASE_DATABASE_URL) {
+    return { ok: false, reason: "no_database_url" };
+  }
+
+  const usersSnap = await admin.database().ref("users").once("value");
+  const usersVal = usersSnap.val() || {};
+  const uids = Object.keys(usersVal);
+
+  let totalSent = 0;
+  for (const uid of uids) {
+    const r = await notifyUser(uid, { title, body, data, type: "promo" });
+    totalSent += r.sent || 0;
+  }
+
+  return { ok: true, users: uids.length, totalSent };
+}
+
 // =================== ROUTES ===================
 app.get("/health", (req, res) => {
   res.json({ ok: true, message: "Server is running", port: Number(PORT) });
@@ -164,7 +295,6 @@ app.get("/api/orders", requireAuth, async (req, res) => {
 app.post("/api/orders", requireAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
-
     const { address, items, note, payment_method, total } = req.body;
 
     if (!address || typeof address !== "string" || address.trim().length < 3) {
@@ -174,7 +304,6 @@ app.post("/api/orders", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "items must be a non-empty array" });
     }
 
-    // 1) insert order
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .insert([
@@ -184,7 +313,7 @@ app.post("/api/orders", requireAuth, async (req, res) => {
           note: note ?? null,
           payment_method: payment_method ?? null,
           total: typeof total === "number" ? total : null,
-          // status akan otomatis default 'received' dari DB
+          // status default di DB: received
         },
       ])
       .select()
@@ -194,10 +323,9 @@ app.post("/api/orders", requireAuth, async (req, res) => {
       return res.status(500).json({ message: "Insert order failed", error: orderErr });
     }
 
-    // 2) insert order items
     const orderItemsPayload = items.map((it) => ({
       order_id: order.id,
-      product_id: String(it.product_id), // products.id = text
+      product_id: String(it.product_id),
       name: it.name ?? null,
       price: typeof it.price === "number" ? it.price : null,
       qty: typeof it.qty === "number" ? it.qty : 1,
@@ -237,15 +365,15 @@ app.get("/api/admin/orders", requireAuth, requireAdmin, async (req, res) => {
     }
 
     const { data, error } = await q;
-
     if (error) return res.status(500).json({ message: "Supabase error", error });
+
     return res.json({ orders: data || [] });
   } catch (e) {
     return res.status(500).json({ message: "Server error", error: e.message });
   }
 });
 
-// GET /api/admin/orders/:id (detail)
+// GET /api/admin/orders/:id
 app.get("/api/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -266,8 +394,7 @@ app.get("/api/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => 
 });
 
 // PATCH /api/admin/orders/:id/status
-// body: { status: "received"|"processing"|"ready" }
-// aturan: harus maju (received->processing->ready)
+// body: { status: "processing"|"ready" } (naik 1 step)
 app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -280,10 +407,10 @@ app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req,
       });
     }
 
-    // ambil order dulu
+    // ambil order dulu (butuh user_id untuk notif)
     const { data: order, error: getErr } = await supabase
       .from("orders")
-      .select("id, status")
+      .select("id, status, user_id, total")
       .eq("id", orderId)
       .single();
 
@@ -291,9 +418,8 @@ app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req,
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const current = normalizeStatus(order.status) || ORDER_STATUS.RECEIVED;
-
-    // validasi alur: hanya boleh naik 1 step
     const allowedNext = NEXT_STATUS[current];
+
     if (allowedNext === null) {
       return res.status(400).json({
         message: "Order already completed (ready). Cannot advance.",
@@ -317,7 +443,43 @@ app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req,
 
     if (updErr) return res.status(500).json({ message: "Update failed", error: updErr });
 
+    // ✅ kirim notif ke user via Firebase (FCM + inbox RTDB)
+    const title = "Update Pesanan";
+    const body = `Pesanan kamu sekarang: ${statusLabel(next)}`;
+
+    await notifyUser(order.user_id, {
+      title,
+      body,
+      type: "order_status",
+      data: {
+        order_id: orderId,
+        status: next,
+      },
+    });
+
     return res.json({ ok: true, order: updated });
+  } catch (e) {
+    return res.status(500).json({ message: "Server error", error: e.message });
+  }
+});
+
+// =================== ADMIN PROMO NOTIF (Firebase) ===================
+// Endpoint ini opsional: dipanggil setelah promo berhasil ditambahkan di Supabase
+// POST /api/admin/promos/notify
+// body: { title, body, promo_code? }
+app.post("/api/admin/promos/notify", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const title = String(req.body.title || "Promo Baru 🎉");
+    const body = String(req.body.body || "Ada promo baru, cek sekarang!");
+    const promoCode = req.body.promo_code ? String(req.body.promo_code) : null;
+
+    const result = await broadcastPromo({
+      title,
+      body,
+      data: promoCode ? { promo_code: promoCode } : {},
+    });
+
+    return res.json({ ok: true, result });
   } catch (e) {
     return res.status(500).json({ message: "Server error", error: e.message });
   }

@@ -13,6 +13,10 @@ class OrdersView extends GetView<OrdersController> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A1A),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white70),
+          onPressed: () => Get.back(),
+        ),
         title: const Text(
           'Riwayat Pesanan',
           style: TextStyle(

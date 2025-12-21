@@ -19,4 +19,5 @@ class AppRoutes {
   static const adminOrders = '/admin/orders';
   static const String admin = '/admin';
   static const mapView = '/map-view';
+  static const notifications = '/notifications';
 }

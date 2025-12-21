@@ -9,36 +9,49 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # State management / routing
   get: ^4.7.3
+
+  # Supabase + env
   supabase_flutter: ^2.10.3
   flutter_dotenv: ^6.0.0
 
-  # --- Firebase (kompatibel satu sama lain) ---
+  # Firebase (sudah selaras)
   firebase_core: ^4.3.0
   firebase_auth: ^6.1.2
   firebase_messaging: ^16.0.4
   firebase_database: ^12.1.0
 
+  # Notifications
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.4
-  image_picker: ^1.1.2
+  flutter_timezone: ^5.0.1
+
+  # Storage / local
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  intl: ^0.20.2
-  path_provider: ^2.1.4
-  isar_flutter_libs: ^4.0.0-dev.13
   shared_preferences: ^2.5.3
-  http: ^1.2.2
+  path_provider: ^2.1.4
 
-  cupertino_icons: ^1.0.8
+  # Network / utils
+  http: ^1.2.2
   dio: ^5.9.0
-  flutter_timezone: ^5.0.1
-  file_picker: ^10.3.7
+  intl: ^0.20.2
+  connectivity_plus: ^7.0.0
+
+  # Permissions / location / maps
   permission_handler: ^12.0.1
   geolocator: ^14.0.2
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
-  connectivity_plus: ^7.0.0
+
+  # Media / files
+  image_picker: ^1.1.2
+  file_picker: ^10.3.7
+
+  # Other
+  cupertino_icons: ^1.0.8
+  isar_flutter_libs: ^4.0.0-dev.13
 
 dev_dependencies:
   flutter_test:
@@ -52,9 +65,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/sounds/
     - .env
-
+    - assets/sounds/
 
   fonts:
     - family: Montserrat
@@ -66,7 +78,7 @@ flutter:
           weight: 700
         - asset: assets/fonts/Montserrat-ExtraBold.ttf
           weight: 800
-    
+
     - family: Judson
       fonts:
         - asset: assets/fonts/Judson-Italic.ttf
@@ -74,7 +86,7 @@ flutter:
         - asset: assets/fonts/Judson-Bold.ttf
           weight: 700
           style: italic
-    
+
     - family: JimNightshade
       fonts:
         - asset: assets/fonts/JimNightshade-Regular.ttf

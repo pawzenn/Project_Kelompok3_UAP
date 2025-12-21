@@ -1,30 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'firebase_options.dart';
+
 import 'app/routes/app_pages.dart';
 import 'app/routes/app_routes.dart';
 
-import 'services/supabase/supabase_service.dart';
+// ✅ services
 import 'core/local/hive_service.dart';
+import '/services/supabase/supabase_service.dart';
 
-// ✅ CartController global
-import 'features/cart/controller/cart_controller.dart';
+// ✅ notif
+import 'core/notification/local_notification_service.dart';
+import 'core/notification/fcm_service.dart';
+
+/// ✅ Background handler WAJIB top-level + entrypoint
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // kalau mau save notif ke RTDB saat background, biasanya via backend/cloud function
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase
+  // ✅ background handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  // 1) Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Supabase init (.env)
+  // 2) Hive (WAJIB sebelum ada yang manggil cache)
+  await HiveService.init();
+
+  // 3) Supabase (biar client gak LateInit)
   await SupabaseService.instance.init();
 
-  // Hive init
-  await HiveService.init();
+  // 4) Local Notif (banner + sound)
+  await LocalNotificationService.init();
+
+  // 5) FCM (permission + token + listener foreground)
+  await FCMService.init(
+    onToken: (token) {
+      debugPrint('🔥 FCM TOKEN (main): $token');
+    },
+  );
 
   runApp(const MyApp());
 }
@@ -36,13 +63,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Warung Lalapan',
-
-      // ✅ Pastikan controller cart selalu ada untuk seluruh app
-      initialBinding: BindingsBuilder(() {
-        Get.put(CartController(), permanent: true);
-      }),
-
       initialRoute: AppRoutes.welcome,
       getPages: AppPages.routes,
     );

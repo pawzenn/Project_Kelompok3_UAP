@@ -11,6 +11,20 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// Simple request logger (helpful for debugging 502s in cloud logs)
+app.use((req, res, next) => {
+  console.log(`[REQ] ${new Date().toISOString()} ${req.method} ${req.url}`);
+  next();
+});
+
+// Global handlers to surface uncaught errors in logs
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err && err.stack ? err.stack : err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 Unhandled Rejection:', reason);
+});
+
 // ---------- ENV CHECK ----------
 const PORT = process.env.PORT || 3000;
 
@@ -33,7 +47,13 @@ if (!FIREBASE_SERVICE_ACCOUNT_JSON) {
   console.error("❌ Missing env: FIREBASE_SERVICE_ACCOUNT_JSON");
   process.exit(1);
 }
-
+// Log presence of important envs (DOES NOT print secrets)
+console.log('🔎 Env presence:', {
+  SUPA_URL: !!SUPA_URL,
+  SUPA_KEY: !!SUPA_SERVICE_ROLE_KEY,
+  FIREBASE_JSON: !!FIREBASE_SERVICE_ACCOUNT_JSON,
+  PORT
+});
 // ---------- INIT FIREBASE ADMIN (JSON ENV) ----------
 let serviceAccount;
 try {

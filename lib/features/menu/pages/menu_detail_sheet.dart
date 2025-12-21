@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '/data/models/product.dart';
-import '../../cart/controller/cart_controller.dart'; // ✅ SESUAIKAN PATH DI PROJECTMU
+import '../../cart/controller/cart_controller.dart';
 import '../../../app/routes/app_routes.dart';
 
 class MenuDetailSheet extends StatefulWidget {
@@ -14,214 +14,317 @@ class MenuDetailSheet extends StatefulWidget {
   State<MenuDetailSheet> createState() => _MenuDetailSheetState();
 }
 
-class _MenuDetailSheetState extends State<MenuDetailSheet> {
+class _MenuDetailSheetState extends State<MenuDetailSheet>
+    with SingleTickerProviderStateMixin {
   int qty = 1;
+
+  late final AnimationController _anim;
+  late final Animation<double> _fade;
+  late final Animation<double> _scale;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
+    _scale = Tween<double>(begin: 0.92, end: 1.0).animate(
+      CurvedAnimation(parent: _anim, curve: Curves.easeOutBack),
+    );
+    _slide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _anim.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  Future<void> _close() async {
+    await _anim.reverse();
+    if (mounted) Get.back();
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
-
-    // ✅ ambil cart controller yang global
     final cart = Get.find<CartController>();
 
-    return Stack(
-      children: [
-        // BLUR layer supaya daftar menu tetap keliatan
-        Positioned.fill(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(color: Colors.black.withOpacity(0.10)),
+    final w = MediaQuery.of(context).size.width;
+    final dialogW = (w * 0.88).clamp(320.0, 440.0);
+
+    // ✅ FOTO LEBIH BESAR + sedikit turun
+    final imageSize = (dialogW * 0.48).clamp(150.0, 200.0);
+
+    // overlap masih 40%, tapi posisi dibuat sedikit lebih turun (jadi top tidak terlalu minus)
+    final overlapDown = imageSize * 0.40;
+    final imageTop = -(imageSize * 0.48); // sebelumnya 0.60 (terlalu naik)
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Stack(
+        children: [
+          // blur background
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(color: Colors.black.withOpacity(0.18)),
+            ),
           ),
-        ),
 
-        // SHEET CONTENT
-        DraggableScrollableSheet(
-          initialChildSize: 0.88,
-          minChildSize: 0.55,
-          maxChildSize: 0.95,
-          builder: (_, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF22590A),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: SingleChildScrollView(
-                controller: scrollController,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+          // tap outside close
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _close,
+              behavior: HitTestBehavior.opaque,
+              child: const SizedBox(),
+            ),
+          ),
 
-                    // HERO
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: SizedBox(
-                            height: 220,
-                            width: double.infinity,
-                            child: Image.network(
-                              'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1400&q=80',
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 12,
-                          top: 12,
-                          child: IconButton(
-                            onPressed: () => Get.back(),
-                            icon: const Icon(Icons.close, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // Foto bulat
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            blurRadius: 18,
-                            color: Colors.black.withOpacity(0.35),
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.network(p.imageUrl, fit: BoxFit.cover),
-                      ),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Card detail
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 18),
-                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFB78B2A).withOpacity(0.55),
-                        borderRadius: BorderRadius.circular(26),
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.10)),
-                      ),
-                      child: Column(
+          Center(
+            child: FadeTransition(
+              opacity: _fade,
+              child: SlideTransition(
+                position: _slide,
+                child: ScaleTransition(
+                  scale: _scale,
+                  child: GestureDetector(
+                    onTap: () {},
+                    child: SizedBox(
+                      width: dialogW,
+                      child: Stack(
+                        clipBehavior: Clip.none,
                         children: [
-                          Text(
-                            p.name,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              height: 1.05,
+                          // ✅ CARD lebih panjang + opacity 45%
+                          Container(
+                            padding: EdgeInsets.fromLTRB(
+                              18,
+                              // ruang atas dibuat lebih rapat (nama lebih dekat ke foto)
+                              16 + overlapDown + (imageSize * 0.28),
+                              18,
+                              18,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFED9A00).withOpacity(0.45),
+                              borderRadius: BorderRadius.circular(26),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.18)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.26),
+                                  blurRadius: 26,
+                                  offset: const Offset(0, 14),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // ✅ NAMA lebih dekat (margin kecil)
+                                Text(
+                                  p.name,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.05,
+                                    fontFamily: 'Montserrat',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+
+                                // ✅ Deskripsi diberi jarak supaya qty & button turun
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 6),
+                                  child: Text(
+                                    p.area ?? 'Deskripsi belum tersedia.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.95),
+                                      fontSize: 14.5,
+                                      height: 1.55,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'Montserrat',
+                                    ),
+                                  ),
+                                ),
+
+                                // ✅ jarak lebih besar agar qty & button sedikit kebawah
+                                const SizedBox(height: 22),
+
+                                // Qty control
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _QtyButton(
+                                      icon: Icons.remove,
+                                      onTap: () {
+                                        if (qty > 1) setState(() => qty--);
+                                      },
+                                    ),
+                                    const SizedBox(width: 14),
+                                    AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 180),
+                                      curve: Curves.easeOut,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.22),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.16),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '$qty',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w900,
+                                          fontFamily: 'Montserrat',
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    _QtyButton(
+                                      icon: Icons.add,
+                                      onTap: () => setState(() => qty++),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 18),
+
+                                // Add to cart
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFE6F06A),
+                                      foregroundColor: const Color(0xFF22590A),
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      cart.add(p, qty: qty);
+
+                                      Get.snackbar(
+                                        'Keranjang',
+                                        'Berhasil menambahkan ${p.name} x$qty',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                      );
+
+                                      _close();
+                                      Get.offAllNamed(AppRoutes.home);
+                                    },
+                                    child: Text(
+                                      'Tambah ke Keranjang • Rp${p.price} x$qty',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontFamily: 'Montserrat',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                // ✅ extra space biar card terasa lebih panjang kebawah
+                                const SizedBox(height: 6),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            p.area ?? 'Deskripsi belum tersedia.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.95),
-                              fontSize: 15,
-                              height: 1.55,
-                              fontWeight: FontWeight.w500,
+
+                          // ✅ Circle image (lebih besar + turun sedikit)
+                          Positioned(
+                            top: imageTop,
+                            left: (dialogW - imageSize) / 2,
+                            child: Container(
+                              width: imageSize,
+                              height: imageSize,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    blurRadius: 28,
+                                    color: Colors.black.withOpacity(0.35),
+                                    offset: const Offset(0, 14),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.60),
+                                  width: 4,
+                                ),
+                              ),
+                              child: ClipOval(
+                                child: Image.network(
+                                  p.imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: Colors.white.withOpacity(0.12),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.broken_image_outlined,
+                                        color: Colors.white70,
+                                        size: 34,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 24),
 
-                          // Qty control
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _QtyButton(
-                                icon: Icons.remove,
-                                onTap: () {
-                                  if (qty > 1) setState(() => qty--);
-                                },
-                              ),
-                              const SizedBox(width: 18),
-                              Container(
-                                width: 70,
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.35),
-                                  borderRadius: BorderRadius.circular(999),
+                          // Exit button
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.18),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.22),
                                 ),
                               ),
-                              const SizedBox(width: 18),
-                              _QtyButton(
-                                icon: Icons.add,
-                                onTap: () => setState(() => qty++),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 22),
-
-                          // ✅ Add to cart (SUDAH BENER)
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE6F06A),
-                                foregroundColor: const Color(0xFF22590A),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                onPressed: _close,
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.black,
                                 ),
-                              ),
-                              onPressed: () {
-                                // ✅ ini inti yang sebelumnya belum ada
-                                cart.add(p, qty: qty);
-
-                                Get.snackbar(
-                                  'Keranjang',
-                                  'Berhasil menambahkan ${p.name} x$qty',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                );
-
-                                // tutup sheet
-                                Get.back();
-
-                                // kembali ke halaman daftar menu otomatis (bersihkan stack)
-                                Get.offAllNamed(AppRoutes.home);
-
-                                // (opsional) kalau mau langsung buka cart, uncomment:
-                                // Get.toNamed(AppRoutes.cart);
-                              },
-                              child: Text(
-                                'Tambah ke Keranjang • Rp${p.price} x$qty',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w900),
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 22),
-                  ],
+                  ),
                 ),
               ),
-            );
-          },
-        ),
-      ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -242,6 +345,13 @@ class _QtyButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFE6F06A),
           borderRadius: BorderRadius.circular(999),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.14),
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Icon(icon, color: Colors.black, size: 28),
       ),

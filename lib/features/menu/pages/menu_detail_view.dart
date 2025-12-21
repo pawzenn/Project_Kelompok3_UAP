@@ -14,7 +14,6 @@ class MenuDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = Get.put(MenuDetailController());
 
-    // ambil data dari arguments (kamu kirim dari home/menu)
     final p = Get.arguments;
 
     // ====== sesuaikan getter ini dengan model kamu ======

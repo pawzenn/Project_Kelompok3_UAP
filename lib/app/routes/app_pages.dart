@@ -26,6 +26,7 @@ import '../../features/profile/bindings/profile_binding.dart';
 import '../../features/promo/pages/promo_view.dart';
 import '../../features/admin/pages/admin_orders_view.dart';
 import '../../features/admin/bindings/admin_binding.dart';
+import '../../features/admin/pages/admin_shell_view.dart';
 
 import 'app_routes.dart';
 
@@ -93,6 +94,11 @@ class AppPages {
     GetPage(
       name: AppRoutes.adminOrders,
       page: () => const AdminOrdersView(),
+      binding: AdminBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.admin,
+      page: () => const AdminShellView(),
       binding: AdminBinding(),
     ),
 

@@ -15,6 +15,7 @@ class HomeView extends GetView<HomeController> {
 
   static const Color _menuGreen = Color(0xFF3E7C3E);
   static const Color _darkGreen = Color(0xFF144100);
+  static const Color _brightYellow = Color(0xFFE6F06A);
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,7 @@ class HomeView extends GetView<HomeController> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE6F06A).withOpacity(0.5),
+              color: _brightYellow.withOpacity(0.5),
               blurRadius: 20,
               spreadRadius: 2,
               offset: const Offset(0, 4),
@@ -36,7 +37,7 @@ class HomeView extends GetView<HomeController> {
           ],
         ),
         child: FloatingActionButton(
-          backgroundColor: const Color(0xFFE6F06A),
+          backgroundColor: _brightYellow,
           elevation: 0,
           onPressed: () => Get.toNamed(AppRoutes.cart),
           child: const Icon(
@@ -49,9 +50,9 @@ class HomeView extends GetView<HomeController> {
       bottomNavigationBar: _buildBottomNav(bottomH),
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE6F06A)),
+              valueColor: AlwaysStoppedAnimation<Color>(_brightYellow),
             ),
           );
         }
@@ -64,10 +65,10 @@ class HomeView extends GetView<HomeController> {
 
         return CustomScrollView(
           slivers: [
-            // 1. Carousel + Header
-            const _HeroCarouselWithHeaderSliver(),
+            // Collapsible Header dengan Carousel
+            _CollapsibleCarouselHeaderSliver(),
 
-            // 2. Container Menu
+            // Container Menu
             SliverToBoxAdapter(
               child: Container(
                 decoration: const BoxDecoration(
@@ -76,7 +77,7 @@ class HomeView extends GetView<HomeController> {
                 child: Column(
                   children: [
                     const Padding(
-                      padding: EdgeInsets.only(top: 0.25, bottom: 0.25),
+                      padding: EdgeInsets.only(top: 24, bottom: 8),
                       child: Text(
                         'DAFTAR MENU',
                         style: TextStyle(
@@ -89,7 +90,7 @@ class HomeView extends GetView<HomeController> {
                       ),
                     ),
 
-                    // Grid Menu (lebih rapat)
+                    // Grid Menu
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 98),
                       child: items.isEmpty
@@ -206,6 +207,10 @@ class HomeView extends GetView<HomeController> {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: controller.refreshProducts,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE6F06A),
+              foregroundColor: const Color(0xFF144100),
+            ),
             child: const Text('Coba Lagi'),
           ),
         ],
@@ -234,26 +239,24 @@ class HomeView extends GetView<HomeController> {
   }
 }
 
-// ================== CAROUSEL WIDGET ==================
+// ================== COLLAPSIBLE CAROUSEL HEADER ==================
 
-class _HeroCarouselWithHeaderSliver extends StatefulWidget {
-  const _HeroCarouselWithHeaderSliver();
-
+class _CollapsibleCarouselHeaderSliver extends StatefulWidget {
   @override
-  State<_HeroCarouselWithHeaderSliver> createState() =>
-      _HeroCarouselWithHeaderSliverState();
+  State<_CollapsibleCarouselHeaderSliver> createState() =>
+      _CollapsibleCarouselHeaderSliverState();
 }
 
-class _HeroCarouselWithHeaderSliverState
-    extends State<_HeroCarouselWithHeaderSliver> {
+class _CollapsibleCarouselHeaderSliverState
+    extends State<_CollapsibleCarouselHeaderSliver> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   Timer? _autoTimer;
 
   final List<String> _heroImages = [
-    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1400&q=80',
-    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1400&q=80',
-    'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=1400&q=80',
+    'https://sljlklzqxsxrtfmumnhd.supabase.co/storage/v1/object/public/produk-bangajey/AyamCrispy.jpg',
+    'https://sljlklzqxsxrtfmumnhd.supabase.co/storage/v1/object/public/produk-bangajey/AyamBakar.avif',
+    'https://sljlklzqxsxrtfmumnhd.supabase.co/storage/v1/object/public/produk-bangajey/AyamGeprek.jpg',
   ];
 
   @override
@@ -286,62 +289,144 @@ class _HeroCarouselWithHeaderSliverState
   Widget build(BuildContext context) {
     final safeTop = MediaQuery.of(context).padding.top;
 
-    // ✅ dibuat lebih pendek biar kompak & space kosong hilang
-    const double carouselCoreH = 210;
-    const double totalH = 210;
-    const double overlayH = 36;
+    return SliverAppBar(
+      expandedHeight: 280,
+      floating: false,
+      pinned: true,
+      backgroundColor: const Color(0xFF144100),
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          // Hitung progress collapse (0.0 = expanded, 1.0 = collapsed)
+          final top = constraints.biggest.height;
+          final progress =
+              ((top - kToolbarHeight - safeTop) / (280 - kToolbarHeight))
+                  .clamp(0.0, 1.0);
 
-    return SliverToBoxAdapter(
-      child: SizedBox(
-        height: totalH + safeTop,
-        child: Stack(
-          children: [
-            // Carousel Images
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: carouselCoreH + safeTop,
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _heroImages.length,
-                onPageChanged: (i) => setState(() => _currentPage = i),
-                itemBuilder: (context, i) => Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(_heroImages[i], fit: BoxFit.cover),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.26),
-                            Colors.black.withOpacity(0.62),
-                          ],
+          return FlexibleSpaceBar(
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Carousel Images
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: _heroImages.length,
+                  onPageChanged: (i) => setState(() => _currentPage = i),
+                  itemBuilder: (context, i) => Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(_heroImages[i], fit: BoxFit.cover),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.3),
+                              Colors.black.withOpacity(0.7),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ),
 
-            // Header: Logo & Search
-            Positioned(
-              top: safeTop + 10,
-              left: 16,
-              right: 16,
+                // Header Content (Logo, Search, Notif)
+                Positioned(
+                  top: safeTop + 10,
+                  left: 16,
+                  right: 16,
+                  child: Opacity(
+                    opacity: progress,
+                    child: Row(
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Lalapan',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Judson',
+                              ),
+                            ),
+                            Text(
+                              'Bang Ajey',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Judson',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _SearchBar(
+                            onChanged:
+                                Get.find<HomeController>().onSearchChanged,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const _NotifButton(),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Center Text "Menu Favorit" & Dots
+                Positioned(
+                  bottom: 40,
+                  left: 0,
+                  right: 0,
+                  child: Opacity(
+                    opacity: progress,
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Menu Favorit',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 36,
+                            fontFamily: 'JimNightshade',
+                            fontStyle: FontStyle.italic,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black54,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _Dots(currentPage: _currentPage),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // Title yang muncul saat collapsed
+            titlePadding: EdgeInsets.only(left: 16, bottom: 16),
+            title: Opacity(
+              opacity: 1 - progress,
               child: Row(
                 children: [
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         'Lalapan',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 14,
                           fontStyle: FontStyle.italic,
                           fontFamily: 'Judson',
                         ),
@@ -350,7 +435,7 @@ class _HeroCarouselWithHeaderSliverState
                         'Bang Ajey',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           fontStyle: FontStyle.italic,
                           fontFamily: 'Judson',
@@ -358,65 +443,26 @@ class _HeroCarouselWithHeaderSliverState
                       ),
                     ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _SearchBar(
-                      onChanged: Get.find<HomeController>().onSearchChanged,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const _NotifButton(),
                 ],
               ),
             ),
-
-            // Text: Menu Favorit & Dots (lebih dekat, tapi aman)
-            Positioned(
-              bottom: overlayH + 6,
-              left: 0,
-              right: 0,
-              child: Column(
-                children: [
-                  const Text(
-                    'Menu Favorit',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontFamily: 'JimNightshade',
-                      fontStyle: FontStyle.italic,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black54,
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _Dots(currentPage: _currentPage),
-                ],
-              ),
-            ),
-
-            // Curved Overlay
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: overlayH,
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF144100),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(26),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
+      // Actions untuk search dan notif saat collapsed
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: _SearchBar(
+            onChanged: Get.find<HomeController>().onSearchChanged,
+            compact: true,
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(right: 16),
+          child: _NotifButton(),
+        ),
+      ],
     );
   }
 }
@@ -521,10 +567,31 @@ class _MenuCardNew extends StatelessWidget {
 
 class _SearchBar extends StatelessWidget {
   final ValueChanged<String> onChanged;
-  const _SearchBar({required this.onChanged});
+  final bool compact;
+
+  const _SearchBar({
+    required this.onChanged,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.25),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.4),
+            width: 1.5,
+          ),
+        ),
+        child: const Icon(Icons.search, color: Colors.white, size: 20),
+      );
+    }
+
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 14),

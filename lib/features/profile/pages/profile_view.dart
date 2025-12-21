@@ -6,155 +6,75 @@ import '../../../app/routes/app_routes.dart';
 class ProfileView extends GetView<ProfileController> {
   const ProfileView({super.key});
 
+  static const Color _darkGreen = Color(0xFF144100);
+  static const Color _brightYellow = Color(0xFFE6F06A);
+  static const Color _navGreen = Color(0xFF22590A);
+
   @override
   Widget build(BuildContext context) {
     final bottomH = MediaQuery.of(context).padding.bottom;
+    final safeTop = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
+      backgroundColor: const Color.fromARGB(255, 0, 62, 0),
       extendBodyBehindAppBar: true,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF22590A),
-              const Color(0xFF1C4A0B),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomH),
-            child: SizedBox(
-              height: 70,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      bottomNavigationBar: _buildBottomNav(bottomH),
+      body: CustomScrollView(
+        slivers: [
+          // Header dengan gambar background
+          SliverAppBar(
+            expandedHeight: 280,
+            floating: false,
+            pinned: true,
+            backgroundColor: _darkGreen,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
                 children: [
-                  _NavItem(
-                    icon: Icons.home_rounded,
-                    label: 'HOME',
-                    active: false,
-                    onTap: () => Get.offAllNamed(AppRoutes.home),
+                  // Background Image
+                  Image.network(
+                    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1400&q=80',
+                    fit: BoxFit.cover,
                   ),
-                  _NavItem(
-                    icon: Icons.local_offer_rounded,
-                    label: 'PROMO',
-                    active: false,
-                    onTap: () => Get.snackbar('Promo', 'Nanti ke promo_view'),
-                  ),
-                  _NavItem(
-                    icon: Icons.receipt_long_rounded,
-                    label: 'RIWAYAT',
-                    active: false,
-                    onTap: () => Get.toNamed(AppRoutes.orders),
-                  ),
-                  _NavItem(
-                    icon: Icons.person_rounded,
-                    label: 'PROFIL',
-                    active: true,
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header Section with Avatar & User Info
-            Stack(
-              children: [
-                // Background gradient
-                Container(
-                  height: 320,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFF22590A),
-                        const Color(0xFF1C4A0B),
-                      ],
+                  // Gradient Overlay
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.5),
+                          _darkGreen.withOpacity(0.9),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-
-                Container(
-                  height: 320,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.3),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Content
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  // Content
+                  Positioned(
+                    bottom: 20,
+                    left: 0,
+                    right: 0,
                     child: Column(
                       children: [
-                        const SizedBox(height: 24),
-
-                        // Title
-                        Text(
-                          'PROFIL',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFFE6F06A),
-                            letterSpacing: 2,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.3),
-                                offset: const Offset(0, 2),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 32),
-
                         // Avatar
                         Obx(() {
                           return Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(0xFFE6F06A),
+                                color: _brightYellow,
                                 width: 4,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      const Color(0xFFE6F06A).withOpacity(0.3),
+                                  color: _brightYellow.withOpacity(0.4),
                                   blurRadius: 20,
                                   offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
                             child: CircleAvatar(
-                              radius: 60,
+                              radius: 55,
                               backgroundColor: Colors.white.withOpacity(0.1),
                               backgroundImage: controller
                                       .userAvatar.value.isNotEmpty
@@ -163,167 +83,238 @@ class ProfileView extends GetView<ProfileController> {
                               child: controller.userAvatar.value.isEmpty
                                   ? Icon(
                                       Icons.person_rounded,
-                                      size: 60,
+                                      size: 55,
                                       color: Colors.white.withOpacity(0.7),
                                     )
                                   : null,
                             ),
                           );
                         }),
-
-                        const SizedBox(height: 20),
-
-                        // ✅ INFO AKUN CARD
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: const Color(0xFFE6F06A).withOpacity(0.3),
-                              width: 1.5,
+                        const SizedBox(height: 16),
+                        // User Name
+                        Obx(() {
+                          return Text(
+                            controller.userName.value,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
                             ),
+                          );
+                        }),
+                        const SizedBox(height: 6),
+                        // User Email
+                        Obx(() {
+                          return Text(
+                            controller.userEmail.value,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.8),
+                              letterSpacing: 0.3,
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              // title: Obx(() {
+              //   return Text(
+              //     controller.userName.value,
+              //     style: const TextStyle(
+              //       fontSize: 18,
+              //       fontWeight: FontWeight.bold,
+              //     ),
+              //   );
+              // }),
+            ),
+          ),
+
+          // Content Section
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: _darkGreen,
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 24),
+
+                  // Info Card - Hanya Telepon
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Obx(() {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _brightYellow.withOpacity(0.2),
+                            width: 1.5,
                           ),
-                          child: Column(
-                            children: [
-                              // User Name
-                              Obx(() {
-                                return Text(
-                                  controller.userName.value,
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    letterSpacing: 0.5,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                );
-                              }),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.phone_rounded,
+                              color: _brightYellow,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              controller.userPhone.value,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
 
-                              const SizedBox(height: 8),
+                  const SizedBox(height: 28),
 
-                              // User Email
-                              Obx(() {
-                                return Text(
-                                  controller.userEmail.value,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white.withOpacity(0.7),
-                                    letterSpacing: 0.3,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                );
-                              }),
-
-                              const SizedBox(height: 6),
-
-                              // User Phone
-                              Obx(() {
-                                return Text(
-                                  controller.userPhone.value,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.white.withOpacity(0.6),
-                                    letterSpacing: 0.3,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                );
-                              }),
-                            ],
+                  // Menu Title
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: _brightYellow,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Pengaturan',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
 
-            // Menu Section - HANYA 2 MENU
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 100),
-              decoration: const BoxDecoration(
-                color: Color(0xFF0F0F0F),
-              ),
-              child: Column(
-                children: [
-                  // 1. Riwayat Pesanan
-                  _MenuItem(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Riwayat Pesanan',
-                    subtitle: 'Lihat pesanan Anda',
-                    onTap: () => Get.toNamed(AppRoutes.orders),
+                  const SizedBox(height: 16),
+
+                  // Menu Items
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        // Riwayat Pesanan
+                        _MenuItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Riwayat Pesanan',
+                          subtitle: 'Lihat pesanan Anda',
+                          onTap: () => Get.toNamed(AppRoutes.orders),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Mode Tema
+                        Obx(() {
+                          return _MenuItemWithSwitch(
+                            icon: controller.isDarkMode.value
+                                ? Icons.dark_mode_rounded
+                                : Icons.light_mode_rounded,
+                            title: 'Mode Tema',
+                            subtitle: controller.isDarkMode.value
+                                ? 'Mode Gelap Aktif'
+                                : 'Mode Terang Aktif',
+                            value: controller.isDarkMode.value,
+                            onChanged: (val) => controller.toggleTheme(),
+                          );
+                        }),
+
+                        const SizedBox(height: 12),
+
+                        // Notifikasi
+                        _MenuItem(
+                          icon: Icons.notifications_rounded,
+                          title: 'Notifikasi',
+                          subtitle: 'Atur preferensi notifikasi',
+                          onTap: () {
+                            Get.snackbar(
+                              'Notifikasi',
+                              'Fitur pengaturan notifikasi',
+                              backgroundColor: _darkGreen,
+                              colorText: Colors.white,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // 2. Ganti Mode Tema (Dark/Light)
-                  Obx(() {
-                    return _MenuItemWithSwitch(
-                      icon: controller.isDarkMode.value
-                          ? Icons.dark_mode_rounded
-                          : Icons.light_mode_rounded,
-                      title: 'Mode Tema',
-                      subtitle: controller.isDarkMode.value
-                          ? 'Mode Gelap Aktif'
-                          : 'Mode Terang Aktif',
-                      value: controller.isDarkMode.value,
-                      onChanged: (val) => controller.toggleTheme(),
-                    );
-                  }),
 
                   const SizedBox(height: 32),
 
                   // Logout Button
-                  Obx(() {
-                    return SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: controller.isLoading.value
-                            ? null
-                            : () => _showLogoutDialog(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD32F2F),
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                              const Color(0xFFD32F2F).withOpacity(0.5),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Obx(() {
+                      return SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: controller.isLoading.value
+                              ? null
+                              : () => _showLogoutDialog(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD32F2F),
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                const Color(0xFFD32F2F).withOpacity(0.5),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
-                        ),
-                        child: controller.isLoading.value
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(Icons.logout_rounded, size: 22),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    'Keluar',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
+                          child: controller.isLoading.value
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
                                     ),
                                   ),
-                                ],
-                              ),
-                      ),
-                    );
-                  }),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(Icons.logout_rounded, size: 22),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'Keluar',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      );
+                    }),
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -336,10 +327,65 @@ class ProfileView extends GetView<ProfileController> {
                       letterSpacing: 0.3,
                     ),
                   ),
+
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(double bottomH) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _navGreen,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomH),
+          child: SizedBox(
+            height: 70,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _NavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Beranda',
+                  active: false,
+                  onTap: () => Get.offAllNamed(AppRoutes.home),
+                ),
+                _NavItem(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Pesanan',
+                  active: false,
+                  onTap: () => Get.toNamed(AppRoutes.orders),
+                ),
+                _NavItem(
+                  icon: Icons.local_offer_rounded,
+                  label: 'Promo',
+                  active: false,
+                  onTap: () => Get.snackbar('Promo', 'Halaman promo'),
+                ),
+                _NavItem(
+                  icon: Icons.person_rounded,
+                  label: 'Profil',
+                  active: true,
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -348,9 +394,13 @@ class ProfileView extends GetView<ProfileController> {
   void _showLogoutDialog(BuildContext context) {
     Get.dialog(
       AlertDialog(
-        backgroundColor: const Color(0xFF1C1C1C),
+        backgroundColor: _darkGreen,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: _brightYellow.withOpacity(0.3),
+            width: 1.5,
+          ),
         ),
         title: const Text(
           'Keluar?',
@@ -395,7 +445,7 @@ class ProfileView extends GetView<ProfileController> {
   }
 }
 
-// Regular Menu Item (tanpa switch)
+// Menu Item
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -429,7 +479,7 @@ class _MenuItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF22590A).withOpacity(0.3),
+                color: const Color(0xFFE6F06A).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -476,7 +526,7 @@ class _MenuItem extends StatelessWidget {
   }
 }
 
-// Menu Item WITH SWITCH (untuk tema)
+// Menu Item with Switch
 class _MenuItemWithSwitch extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -509,7 +559,7 @@ class _MenuItemWithSwitch extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF22590A).withOpacity(0.3),
+              color: const Color(0xFFE6F06A).withOpacity(0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -558,6 +608,7 @@ class _MenuItemWithSwitch extends StatelessWidget {
   }
 }
 
+// Bottom Nav Item
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -575,34 +626,24 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Colors.white.withOpacity(0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: active ? const Color(0xFFE6F06A) : Colors.white70,
-              size: 26,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: active ? const Color(0xFFE6F56C) : Colors.white60,
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: active ? const Color(0xFFE6F56C) : Colors.white60,
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: active ? const Color(0xFFE6F06A) : Colors.white70,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-                fontSize: 10,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -25,6 +25,13 @@ const SUPA_SERVICE_ROLE_KEY = process.env.SUPA_SERVICE_ROLE_KEY;
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON; // recommended
 const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH; // optional
 
+// Admin access
+// contoh: "admin1@gmail.com,admin2@gmail.com"
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
 if (!SUPA_URL) {
   console.error("❌ Missing env: SUPA_URL (or SUPABASE_URL)");
   process.exit(1);
@@ -72,11 +79,62 @@ async function requireAuth(req, res, next) {
     }
 
     const decoded = await admin.auth().verifyIdToken(token);
-    req.user = decoded; // decoded.uid
+    req.user = decoded; // decoded.uid, decoded.email, decoded.admin (kalau custom claim)
     return next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid token", error: err.message });
   }
+}
+
+function isAdminUser(decoded) {
+  // Opsi A (paling aman): Firebase custom claims admin=true
+  if (decoded && decoded.admin === true) return true;
+
+  // Opsi B (paling gampang): whitelist email dari ENV
+  const email = (decoded.email || "").toLowerCase();
+  if (email && ADMIN_EMAILS.includes(email)) return true;
+
+  return false;
+}
+
+function requireAdmin(req, res, next) {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    if (!isAdminUser(req.user)) {
+      return res.status(403).json({
+        message: "Forbidden. Admin only.",
+        hint: "Set ADMIN_EMAILS in env OR set Firebase custom claim admin=true",
+      });
+    }
+    return next();
+  } catch (e) {
+    return res.status(500).json({ message: "Admin check failed", error: e.message });
+  }
+}
+
+// =================== STATUS HELPERS ===================
+const ORDER_STATUS = {
+  RECEIVED: "received",
+  PROCESSING: "processing",
+  READY: "ready",
+};
+
+const NEXT_STATUS = {
+  [ORDER_STATUS.RECEIVED]: ORDER_STATUS.PROCESSING,
+  [ORDER_STATUS.PROCESSING]: ORDER_STATUS.READY,
+  [ORDER_STATUS.READY]: null,
+};
+
+function normalizeStatus(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
+function isValidStatus(s) {
+  return (
+    s === ORDER_STATUS.RECEIVED ||
+    s === ORDER_STATUS.PROCESSING ||
+    s === ORDER_STATUS.READY
+  );
 }
 
 // =================== ROUTES ===================
@@ -84,6 +142,7 @@ app.get("/health", (req, res) => {
   res.json({ ok: true, message: "Server is running", port: Number(PORT) });
 });
 
+// =================== USER ORDERS ===================
 app.get("/api/orders", requireAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
@@ -125,6 +184,7 @@ app.post("/api/orders", requireAuth, async (req, res) => {
           note: note ?? null,
           payment_method: payment_method ?? null,
           total: typeof total === "number" ? total : null,
+          // status akan otomatis default 'received' dari DB
         },
       ])
       .select()
@@ -149,6 +209,115 @@ app.post("/api/orders", requireAuth, async (req, res) => {
     }
 
     return res.json({ ok: true, order_id: order.id });
+  } catch (e) {
+    return res.status(500).json({ message: "Server error", error: e.message });
+  }
+});
+
+// =================== ADMIN ORDERS ===================
+
+// GET /api/admin/orders?status=received|processing|ready
+app.get("/api/admin/orders", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const status = normalizeStatus(req.query.status);
+
+    let q = supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .order("created_at", { ascending: false });
+
+    if (status) {
+      if (!isValidStatus(status)) {
+        return res.status(400).json({
+          message: "Invalid status filter",
+          allowed: Object.values(ORDER_STATUS),
+        });
+      }
+      q = q.eq("status", status);
+    }
+
+    const { data, error } = await q;
+
+    if (error) return res.status(500).json({ message: "Supabase error", error });
+    return res.json({ orders: data || [] });
+  } catch (e) {
+    return res.status(500).json({ message: "Server error", error: e.message });
+  }
+});
+
+// GET /api/admin/orders/:id (detail)
+app.get("/api/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .eq("id", orderId)
+      .single();
+
+    if (error) return res.status(500).json({ message: "Supabase error", error });
+    if (!data) return res.status(404).json({ message: "Order not found" });
+
+    return res.json({ order: data });
+  } catch (e) {
+    return res.status(500).json({ message: "Server error", error: e.message });
+  }
+});
+
+// PATCH /api/admin/orders/:id/status
+// body: { status: "received"|"processing"|"ready" }
+// aturan: harus maju (received->processing->ready)
+app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const next = normalizeStatus(req.body.status);
+
+    if (!isValidStatus(next)) {
+      return res.status(400).json({
+        message: "Invalid status value",
+        allowed: Object.values(ORDER_STATUS),
+      });
+    }
+
+    // ambil order dulu
+    const { data: order, error: getErr } = await supabase
+      .from("orders")
+      .select("id, status")
+      .eq("id", orderId)
+      .single();
+
+    if (getErr) return res.status(500).json({ message: "Supabase error", error: getErr });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const current = normalizeStatus(order.status) || ORDER_STATUS.RECEIVED;
+
+    // validasi alur: hanya boleh naik 1 step
+    const allowedNext = NEXT_STATUS[current];
+    if (allowedNext === null) {
+      return res.status(400).json({
+        message: "Order already completed (ready). Cannot advance.",
+        current,
+      });
+    }
+    if (next !== allowedNext) {
+      return res.status(400).json({
+        message: "Invalid status transition",
+        current,
+        allowed_next: allowedNext,
+      });
+    }
+
+    const { data: updated, error: updErr } = await supabase
+      .from("orders")
+      .update({ status: next })
+      .eq("id", orderId)
+      .select("*, order_items(*)")
+      .single();
+
+    if (updErr) return res.status(500).json({ message: "Update failed", error: updErr });
+
+    return res.json({ ok: true, order: updated });
   } catch (e) {
     return res.status(500).json({ message: "Server error", error: e.message });
   }

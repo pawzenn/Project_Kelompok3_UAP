@@ -24,6 +24,7 @@ import '../../features/tracking/bindings/tracking_binding.dart';
 import '../../features/profile/pages/profile_view.dart';
 import '../../features/profile/bindings/profile_binding.dart';
 import '../../features/promo/pages/promo_view.dart';
+import '../../features/promo/bindings/promo_binding.dart';
 import '../../features/admin/pages/admin_orders_view.dart';
 import '../../features/admin/bindings/admin_binding.dart';
 import '../../features/admin/pages/admin_shell_view.dart';
@@ -90,12 +91,9 @@ class AppPages {
     GetPage(
       name: AppRoutes.promo,
       page: () => const PromoView(),
+      binding: PromoBinding(),
     ),
-    GetPage(
-      name: AppRoutes.adminOrders,
-      page: () => const AdminOrdersView(),
-      binding: AdminBinding(),
-    ),
+
     GetPage(
       name: AppRoutes.admin,
       page: () => const AdminShellView(),

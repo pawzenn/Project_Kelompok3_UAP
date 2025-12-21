@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '/core/config/resto_location.dart';
 import '/services/location/location_service.dart';
@@ -17,6 +20,8 @@ class TrackingController extends GetxController {
 
   final RxBool isLoadingRoute = false.obs;
   final RxString error = ''.obs;
+
+  StreamSubscription<List<Map<String, dynamic>>>? _orderSub;
 
   @override
   void onInit() {
@@ -38,10 +43,19 @@ class TrackingController extends GetxController {
         (ord['restaurant_lng'] as num?)?.toDouble() ?? RestoLocation.lng;
     restoLatLng.value = LatLng(rLat, rLng);
 
-    // status bisa dari order (jika ada), fallback diterima
+    // status dari order (jika ada), fallback diterima
     statusIndex.value = _parseStatusToIndex(ord['status']);
 
+    // ✅ TAMBAHAN: sinkron status dari Supabase berdasarkan order.id
+    _startSyncStatusFromSupabase();
+
     loadRoute();
+  }
+
+  @override
+  void onClose() {
+    _orderSub?.cancel();
+    super.onClose();
   }
 
   int _parseStatusToIndex(dynamic status) {
@@ -53,6 +67,70 @@ class TrackingController extends GetxController {
 
     return 0;
   }
+
+  // =========================================================
+  // ✅ SUPABASE STATUS SYNC (FETCH + REALTIME)
+  // =========================================================
+  String _pickOrderId(Map<String, dynamic> o) {
+    final v = o['id'] ?? o['order_id'] ?? o['orderId'] ?? o['orderID'];
+    final s = (v ?? '').toString().trim();
+    return s;
+  }
+
+  Future<void> _startSyncStatusFromSupabase() async {
+    final orderId = _pickOrderId(order);
+    if (orderId.isEmpty) return;
+
+    // 1) Fetch sekali biar status langsung terisi
+    await _fetchLatestStatus(orderId);
+
+    // 2) Subscribe realtime biar auto update
+    _orderSub?.cancel();
+    _orderSub = Supabase.instance.client
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('id', orderId)
+        .listen((rows) {
+          if (rows.isEmpty) return;
+          final row = rows.first;
+
+          final newStatus = (row['status'] ?? '').toString();
+
+          // update order map + refresh biar UI Obx langsung berubah
+          order['status'] = newStatus;
+          order.refresh();
+
+          // update step index juga (kalau kamu masih pakai statusIndex di tempat lain)
+          statusIndex.value = _parseStatusToIndex(newStatus);
+        }, onError: (e) {
+          // tidak ganggu UI, hanya catat error ringan
+          // print('Realtime status error: $e');
+        });
+  }
+
+  Future<void> _fetchLatestStatus(String orderId) async {
+    try {
+      final row = await Supabase.instance.client
+          .from('orders')
+          .select('status')
+          .eq('id', orderId)
+          .maybeSingle();
+
+      if (row == null) return;
+
+      final newStatus = (row['status'] ?? '').toString();
+      if (newStatus.isEmpty) return;
+
+      order['status'] = newStatus;
+      order.refresh();
+
+      statusIndex.value = _parseStatusToIndex(newStatus);
+    } catch (e) {
+      // print('Fetch status error: $e');
+    }
+  }
+
+  // =========================================================
 
   Future<void> loadRoute() async {
     final u = userLatLng.value;

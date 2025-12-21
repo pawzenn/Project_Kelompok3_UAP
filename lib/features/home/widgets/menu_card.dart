@@ -14,6 +14,13 @@ class MenuCard extends StatelessWidget {
     this.onTap,
   });
 
+  String _formatPrice(int value) {
+    return value.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]}.',
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -27,13 +34,13 @@ class MenuCard extends StatelessWidget {
             BoxShadow(
               blurRadius: 12,
               offset: const Offset(0, 6),
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withOpacity(0.18),
               spreadRadius: 0,
             ),
             BoxShadow(
               blurRadius: 24,
               offset: const Offset(0, 12),
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withOpacity(0.10),
               spreadRadius: -4,
             ),
           ],
@@ -43,7 +50,7 @@ class MenuCard extends StatelessWidget {
           children: [
             // ====== IMAGE ======
             Expanded(
-              flex: 65,
+              flex: 66,
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
@@ -72,7 +79,7 @@ class MenuCard extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.05),
+                            Colors.black.withOpacity(0.06),
                           ],
                         ),
                       ),
@@ -84,13 +91,13 @@ class MenuCard extends StatelessWidget {
 
             // ====== TEXT AREA ======
             Expanded(
-              flex: 35,
+              flex: 34,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                // ✅ dibuat lebih rapat biar kompak
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Judul - flexible
                     Expanded(
                       child: Text(
                         title,
@@ -98,16 +105,13 @@ class MenuCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          height: 1.3,
+                          fontWeight: FontWeight.w800,
+                          height: 1.25,
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 6),
-
-                    // Harga dengan shadow
+                    const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -118,19 +122,19 @@ class MenuCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF1C4A0B).withOpacity(0.4),
+                            color: const Color(0xFF1C4A0B).withOpacity(0.35),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
                         ],
                       ),
                       child: Text(
-                        price.toString(),
+                        'Rp ${_formatPrice(price)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
-                          letterSpacing: 0.3,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ),

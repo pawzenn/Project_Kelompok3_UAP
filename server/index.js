@@ -93,6 +93,30 @@ app.get("/health", (req, res) => {
   res.json({ ok: true, message: "Server is running" });
 });
 
+// ---------- DEBUG (non-secret diagnostics) ----------
+// Returns presence of key env vars (booleans) and process info. Safe to expose for debugging.
+app.get('/debug', (req, res) => {
+  console.log('[DEBUG] /debug requested - env presence', {
+    SUPA_URL: !!SUPA_URL,
+    SUPA_KEY: !!SUPA_SERVICE_ROLE_KEY,
+    FIREBASE_JSON: !!FIREBASE_SERVICE_ACCOUNT_JSON,
+    PORT,
+  });
+
+  res.json({
+    ok: true,
+    env: {
+      SUPA_URL: !!SUPA_URL,
+      SUPA_KEY: !!SUPA_SERVICE_ROLE_KEY,
+      FIREBASE_JSON: !!FIREBASE_SERVICE_ACCOUNT_JSON,
+      PORT,
+    },
+    pid: process.pid,
+    node: process.version,
+    uptime: process.uptime(),
+  });
+});
+
 // ---------- GET ORDERS ----------
 app.get("/api/orders", requireAuth, async (req, res) => {
   const uid = req.user.uid;

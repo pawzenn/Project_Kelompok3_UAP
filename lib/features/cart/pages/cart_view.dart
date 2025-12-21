@@ -14,9 +14,9 @@ class CartView extends StatelessWidget {
         : Get.put(CartController());
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color.fromARGB(255, 5, 82, 6),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: const Color.fromARGB(255, 5, 82, 6),
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -82,7 +82,7 @@ class CartView extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22590A),
+                      color: const Color.fromARGB(255, 215, 152, 6),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Row(
@@ -121,7 +121,7 @@ class CartView extends StatelessWidget {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Rp${p.price} • Qty ${item.qty}',
+                                'Rp${p.price}  ',
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontWeight: FontWeight.w600,

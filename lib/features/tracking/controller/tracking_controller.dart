@@ -10,7 +10,6 @@ import '/services/location/location_service.dart';
 class TrackingController extends GetxController {
   final RxInt statusIndex = 0.obs; // 0 diterima, 1 proses, 2 siap diambil
 
-  // args dari checkout
   final RxMap<String, dynamic> order = <String, dynamic>{}.obs;
 
   final Rx<LatLng?> userLatLng = Rx<LatLng?>(null);
@@ -27,26 +26,52 @@ class TrackingController extends GetxController {
   void onInit() {
     super.onInit();
 
-    final args = (Get.arguments as Map<String, dynamic>?) ?? {};
-    final ord = (args['order'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final raw = Get.arguments;
+
+    // ✅ Terima 2 format:
+    // A) {'order': {...}, 'userLat': ..., 'userLng': ...}
+    // B) {...orderData langsung...}
+    final Map<String, dynamic> args = (raw is Map)
+        ? Map<String, dynamic>.from(raw as Map)
+        : <String, dynamic>{};
+
+    final Map<String, dynamic> ord;
+    if (args.containsKey('order') && args['order'] is Map) {
+      ord = Map<String, dynamic>.from(args['order'] as Map);
+    } else {
+      ord = args;
+    }
 
     order.assignAll(ord);
 
-    final userLat = (args['userLat'] as num?)?.toDouble() ?? 0.0;
-    final userLng = (args['userLng'] as num?)?.toDouble() ?? 0.0;
+    double? _numToDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return num.tryParse(v.toString())?.toDouble();
+    }
+
+    final userLat = _numToDouble(args['userLat']) ??
+        _numToDouble(args['user_lat']) ??
+        _numToDouble(ord['userLat']) ??
+        _numToDouble(ord['user_lat']) ??
+        _numToDouble(ord['lat']) ??
+        0.0;
+
+    final userLng = _numToDouble(args['userLng']) ??
+        _numToDouble(args['user_lng']) ??
+        _numToDouble(ord['userLng']) ??
+        _numToDouble(ord['user_lng']) ??
+        _numToDouble(ord['lng']) ??
+        0.0;
+
     userLatLng.value = LatLng(userLat, userLng);
 
-    // resto bisa dari order (jika ada), fallback ke konstanta
-    final rLat =
-        (ord['restaurant_lat'] as num?)?.toDouble() ?? RestoLocation.lat;
-    final rLng =
-        (ord['restaurant_lng'] as num?)?.toDouble() ?? RestoLocation.lng;
+    final rLat = _numToDouble(ord['restaurant_lat']) ?? RestoLocation.lat;
+    final rLng = _numToDouble(ord['restaurant_lng']) ?? RestoLocation.lng;
     restoLatLng.value = LatLng(rLat, rLng);
 
-    // status dari order (jika ada), fallback diterima
     statusIndex.value = _parseStatusToIndex(ord['status']);
 
-    // ✅ TAMBAHAN: sinkron status dari Supabase berdasarkan order.id
     _startSyncStatusFromSupabase();
 
     loadRoute();
@@ -60,31 +85,23 @@ class TrackingController extends GetxController {
 
   int _parseStatusToIndex(dynamic status) {
     final s = (status ?? '').toString().toLowerCase().trim();
-
     if (s.contains('ready') || s.contains('siap')) return 2;
     if (s.contains('process') || s.contains('proses')) return 1;
     if (s.contains('receive') || s.contains('diterima')) return 0;
-
     return 0;
   }
 
-  // =========================================================
-  // ✅ SUPABASE STATUS SYNC (FETCH + REALTIME)
-  // =========================================================
   String _pickOrderId(Map<String, dynamic> o) {
     final v = o['id'] ?? o['order_id'] ?? o['orderId'] ?? o['orderID'];
-    final s = (v ?? '').toString().trim();
-    return s;
+    return (v ?? '').toString().trim();
   }
 
   Future<void> _startSyncStatusFromSupabase() async {
     final orderId = _pickOrderId(order);
     if (orderId.isEmpty) return;
 
-    // 1) Fetch sekali biar status langsung terisi
     await _fetchLatestStatus(orderId);
 
-    // 2) Subscribe realtime biar auto update
     _orderSub?.cancel();
     _orderSub = Supabase.instance.client
         .from('orders')
@@ -95,16 +112,12 @@ class TrackingController extends GetxController {
           final row = rows.first;
 
           final newStatus = (row['status'] ?? '').toString();
+          if (newStatus.isEmpty) return;
 
-          // update order map + refresh biar UI Obx langsung berubah
           order['status'] = newStatus;
           order.refresh();
 
-          // update step index juga (kalau kamu masih pakai statusIndex di tempat lain)
           statusIndex.value = _parseStatusToIndex(newStatus);
-        }, onError: (e) {
-          // tidak ganggu UI, hanya catat error ringan
-          // print('Realtime status error: $e');
         });
   }
 
@@ -125,12 +138,8 @@ class TrackingController extends GetxController {
       order.refresh();
 
       statusIndex.value = _parseStatusToIndex(newStatus);
-    } catch (e) {
-      // print('Fetch status error: $e');
-    }
+    } catch (_) {}
   }
-
-  // =========================================================
 
   Future<void> loadRoute() async {
     final u = userLatLng.value;

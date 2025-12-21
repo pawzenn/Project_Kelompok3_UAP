@@ -18,9 +18,9 @@ class OrdersView extends GetView<OrdersController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: Color.fromARGB(255, 28, 74, 8),
       appBar: AppBar(
-        backgroundColor: _bg,
+        backgroundColor: Color.fromARGB(255, 28, 74, 8),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white70),

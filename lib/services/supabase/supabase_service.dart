@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../data/models/product.dart'; // ✅ sesuaikan path Product kamu
+import '../../data/models/product.dart';
 
 class SupabaseService {
   SupabaseService._();
@@ -35,5 +35,30 @@ class SupabaseService {
 
     final list = (res as List).cast<Map<String, dynamic>>();
     return list.map((e) => Product.fromMap(e)).toList();
+  }
+
+  // =========================================================
+  // ✅ AMBIL ROLE ADMIN/USER berdasar firebase_uid
+  // Table yang disarankan: public.user_roles
+  // Kolom minimal: firebase_uid (text, unique), email (text), role (text)
+  // =========================================================
+  Future<String> getRoleByFirebaseUid({
+    required String firebaseUid,
+    String? email,
+  }) async {
+    // kalau tabel belum ada: nanti aku bikinkan SQL-nya
+    final res = await client
+        .from('user_roles')
+        .select('role')
+        .eq('firebase_uid', firebaseUid)
+        .maybeSingle();
+
+    if (res == null) {
+      // default user kalau belum didaftarkan role-nya
+      return 'user';
+    }
+
+    final r = (res['role'] ?? 'user').toString();
+    return r;
   }
 }

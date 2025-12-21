@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi membutuhkan lokasi untuk mengisi alamat pengantaran.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Project Uap</string>
 	<key>CFBundleExecutable</key>

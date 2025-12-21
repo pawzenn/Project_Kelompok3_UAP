@@ -307,7 +307,13 @@ class _SignInPageState extends State<SignInPage>
                                           email: _emailC.text,
                                           password: _passC.text,
                                         );
-                                        Get.offAllNamed(AppRoutes.home);
+
+                                        if (auth.isAdmin.value) {
+                                          Get.offAllNamed(
+                                              AppRoutes.adminOrders);
+                                        } else {
+                                          Get.offAllNamed(AppRoutes.home);
+                                        }
                                       } catch (e) {
                                         Get.snackbar(
                                           '❌ Login Gagal',

@@ -13,8 +13,7 @@ class ApiService {
   static Future<String?> _getIdToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
-    // refresh token biar aman kalau token lama expired
-    return await user.getIdToken(true);
+    return await user.getIdToken(true); // refresh token
   }
 
   static Map<String, String> _headers(String token) => {
@@ -23,8 +22,24 @@ class ApiService {
         'Accept': 'application/json',
       };
 
+  static dynamic _decodeBody(http.Response resp) {
+    try {
+      return jsonDecode(resp.body);
+    } catch (_) {
+      return resp.body;
+    }
+  }
+
+  static Exception _httpError(http.Response resp, String message) {
+    return Exception('$message: ${resp.statusCode} ${resp.body}');
+  }
+
+  // =========================================================
+  // USER - ORDERS
+  // =========================================================
+
   /// GET /api/orders
-  /// Server balikin: { "orders": [ ... ] }
+  /// Server balikin: { "orders": [ ... ] } atau List langsung
   static Future<List<Map<String, dynamic>>> fetchOrders() async {
     final token = await _getIdToken();
     if (token == null) throw Exception('User not logged in');
@@ -35,22 +50,18 @@ class ApiService {
     );
 
     if (resp.statusCode != 200) {
-      throw Exception(
-          'Failed to fetch orders: ${resp.statusCode} ${resp.body}');
+      throw _httpError(resp, 'Failed to fetch orders');
     }
 
-    final decoded = jsonDecode(resp.body);
+    final decoded = _decodeBody(resp);
 
-    // antisipasi kalau server kadang balikin List langsung
     if (decoded is List) {
       return decoded.cast<Map<String, dynamic>>();
     }
 
     if (decoded is Map<String, dynamic>) {
       final orders = decoded['orders'];
-      if (orders is List) {
-        return orders.cast<Map<String, dynamic>>();
-      }
+      if (orders is List) return orders.cast<Map<String, dynamic>>();
       return <Map<String, dynamic>>[];
     }
 
@@ -58,8 +69,6 @@ class ApiService {
   }
 
   /// POST /api/orders
-  /// Minimal server kamu butuh: { address: "...", items: [...] }
-  /// (total/note/payment_method boleh kamu kirim, tapi server kamu saat ini nggak pakai)
   static Future<Map<String, dynamic>> createOrder({
     required String address,
     required List<Map<String, dynamic>> items,
@@ -85,11 +94,100 @@ class ApiService {
     );
 
     if (resp.statusCode != 200) {
-      throw Exception(
-          'Failed to create order: ${resp.statusCode} ${resp.body}');
+      throw _httpError(resp, 'Failed to create order');
     }
 
-    final decoded = jsonDecode(resp.body);
+    final decoded = _decodeBody(resp);
+
+    if (decoded is Map<String, dynamic>) return decoded;
+
+    throw Exception('Unexpected response format: ${resp.body}');
+  }
+
+  // =========================================================
+  // ADMIN - ORDERS
+  // =========================================================
+
+  /// GET /api/admin/orders
+  /// opsional query: ?status=received|processing|ready
+  static Future<List<Map<String, dynamic>>> fetchAdminOrders({
+    String? status,
+  }) async {
+    final token = await _getIdToken();
+    if (token == null) throw Exception('User not logged in');
+
+    final uri = Uri.parse('$_baseUrl/api/admin/orders').replace(
+      queryParameters: {
+        if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+      },
+    );
+
+    final resp = await http.get(uri, headers: _headers(token));
+
+    if (resp.statusCode != 200) {
+      throw _httpError(resp, 'Failed to fetch admin orders');
+    }
+
+    final decoded = _decodeBody(resp);
+
+    if (decoded is List) {
+      return decoded.cast<Map<String, dynamic>>();
+    }
+
+    if (decoded is Map<String, dynamic>) {
+      final orders = decoded['orders'];
+      if (orders is List) return orders.cast<Map<String, dynamic>>();
+      return <Map<String, dynamic>>[];
+    }
+
+    throw Exception('Unexpected response format: ${resp.body}');
+  }
+
+  /// PATCH /api/admin/orders/:id/status
+  /// payload: { "status": "received" | "processing" | "ready" }
+  static Future<Map<String, dynamic>> updateOrderStatus({
+    required String orderId,
+    required String status,
+  }) async {
+    final token = await _getIdToken();
+    if (token == null) throw Exception('User not logged in');
+
+    final payload = {'status': status};
+
+    final resp = await http.patch(
+      Uri.parse('$_baseUrl/api/admin/orders/$orderId/status'),
+      headers: _headers(token),
+      body: jsonEncode(payload),
+    );
+
+    if (resp.statusCode != 200) {
+      throw _httpError(resp, 'Failed to update order status');
+    }
+
+    final decoded = _decodeBody(resp);
+    if (decoded is Map<String, dynamic>) return decoded;
+
+    throw Exception('Unexpected response format: ${resp.body}');
+  }
+
+  /// GET /api/admin/orders/:id
+  /// dipakai untuk admin_order_detail_view
+  static Future<Map<String, dynamic>> fetchAdminOrderDetail({
+    required String orderId,
+  }) async {
+    final token = await _getIdToken();
+    if (token == null) throw Exception('User not logged in');
+
+    final resp = await http.get(
+      Uri.parse('$_baseUrl/api/admin/orders/$orderId'),
+      headers: _headers(token),
+    );
+
+    if (resp.statusCode != 200) {
+      throw _httpError(resp, 'Failed to fetch order detail');
+    }
+
+    final decoded = _decodeBody(resp);
     if (decoded is Map<String, dynamic>) return decoded;
 
     throw Exception('Unexpected response format: ${resp.body}');

@@ -1,111 +1,198 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controller/cart_controller.dart';
-import '/services/api_service.dart';
-import '../../../app/routes/app_routes.dart';
 
-class CheckoutView extends StatelessWidget {
+import '../../../app/routes/app_routes.dart';
+import '/services/location/location_service.dart';
+import '../../../services/api_service.dart';
+import '../../cart/controller/cart_controller.dart';
+
+class CheckoutView extends StatefulWidget {
   const CheckoutView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final cart = Get.find<CartController>();
+  State<CheckoutView> createState() => _CheckoutViewState();
+}
 
-    final alamatC = TextEditingController();
-    final catatanC = TextEditingController();
-    final metodeBayar = 'COD'.obs;
+class _CheckoutViewState extends State<CheckoutView> {
+  final cart = Get.find<CartController>();
+
+  final alamatC = TextEditingController();
+  final catatanC = TextEditingController();
+
+  final RxString metodeBayar = 'COD'.obs;
+  final RxBool isLoadingLokasi = false.obs;
+
+  double? userLat;
+  double? userLng;
+
+  @override
+  void initState() {
+    super.initState();
+    _fillAlamatDariLokasi();
+  }
+
+  @override
+  void dispose() {
+    alamatC.dispose();
+    catatanC.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fillAlamatDariLokasi() async {
+    try {
+      isLoadingLokasi.value = true;
+
+      final pos = await LocationService.getCurrentPosition();
+      userLat = pos.latitude;
+      userLng = pos.longitude;
+
+      final addr = await LocationService.reverseGeocode(
+        lat: pos.latitude,
+        lng: pos.longitude,
+      );
+
+      alamatC.text = addr;
+      setState(() {});
+    } catch (e) {
+      Get.snackbar(
+        'Lokasi',
+        'Gagal mengambil lokasi otomatis. Isi alamat manual ya.',
+        snackPosition: SnackPosition.TOP,
+      );
+    } finally {
+      isLoadingLokasi.value = false;
+    }
+  }
+
+  void _showPesananBerlangsungPopup(Map<String, dynamic> orderMap) {
+    Get.rawSnackbar(
+      snackPosition: SnackPosition.BOTTOM,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+      borderRadius: 16,
+      backgroundColor: const Color(0xFF22590A),
+      duration: const Duration(seconds: 10),
+      messageText: Row(
+        children: [
+          const Icon(Icons.local_shipping, color: Colors.white),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Pesanan berlangsung',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Get.closeCurrentSnackbar();
+              Get.toNamed(
+                AppRoutes.tracking,
+                arguments: {
+                  'order': orderMap,
+                  'userLat': userLat,
+                  'userLng': userLng,
+                },
+              );
+            },
+            child: const Text(
+              'Lihat',
+              style: TextStyle(
+                color: Color(0xFFE7FF7A),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = cart.totalPrice;
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A1A),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A1A),
         elevation: 0,
-        title: const Text(
-          'Checkout',
-          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800),
-        ),
+        title: const Text('Checkout'),
       ),
-      body: Obx(() {
-        if (cart.items.isEmpty) {
-          return const Center(
-            child: Text(
-              'Keranjang kosong',
-              style: TextStyle(color: Colors.white70),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          const Text(
+            'Ringkasan Pesanan',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
             ),
-          );
-        }
+          ),
+          const SizedBox(height: 12),
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ===== Ringkasan Pesanan =====
-              const Text(
-                'Ringkasan Pesanan',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
+          // ✅ FIX: cart.items itu List<CartItem>, jadi pakai .map langsung
+          ...cart.items.map((ci) {
+            final p = ci.product; // pastikan CartItem punya product
+            final qty = ci.qty; // pastikan CartItem punya qty
+            final subtotal = p.price * qty;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF22590A),
+                borderRadius: BorderRadius.circular(18),
               ),
-              const SizedBox(height: 12),
-
-              ...cart.items.map((item) {
-                final p = item.product;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF22590A),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: Image.network(
-                          p.imageUrl,
-                          width: 62,
-                          height: 62,
-                          fit: BoxFit.cover,
-                        ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.network(
+                      p.imageUrl,
+                      width: 62,
+                      height: 62,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 62,
+                        height: 62,
+                        color: Colors.black26,
+                        child: const Icon(Icons.image_not_supported,
+                            color: Colors.white54),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              p.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Rp${p.price} • x${item.qty} • Rp${item.subtotal}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                );
-              }).toList(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Rp${p.price} • x$qty • Rp$subtotal',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
 
-              const SizedBox(height: 18),
+          const SizedBox(height: 18),
 
-              // ===== Alamat =====
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               const Text(
                 'Alamat Pengantaran',
                 style: TextStyle(
@@ -114,263 +201,225 @@ class CheckoutView extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 10),
-
-              _InputBox(
-                hint: 'Masukkan alamat lengkap...',
-                controller: alamatC,
-                minLines: 2,
-                maxLines: 4,
-              ),
-
-              const SizedBox(height: 16),
-
-              // ===== Catatan =====
-              const Text(
-                'Catatan untuk Penjual',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              _InputBox(
-                hint: 'Contoh: pedas sedang, tanpa bawang...',
-                controller: catatanC,
-                minLines: 2,
-                maxLines: 4,
-              ),
-
-              const SizedBox(height: 18),
-
-              // ===== Metode Pembayaran =====
-              const Text(
-                'Metode Pembayaran',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Obx(() => Column(
-                    children: [
-                      _PayTile(
-                        label: 'COD (Bayar di Tempat)',
-                        value: 'COD',
-                        groupValue: metodeBayar.value,
-                        onChanged: (v) => metodeBayar.value = v,
-                      ),
-                      _PayTile(
-                        label: 'Transfer Bank',
-                        value: 'TRANSFER',
-                        groupValue: metodeBayar.value,
-                        onChanged: (v) => metodeBayar.value = v,
-                      ),
-                      _PayTile(
-                        label: 'E-Wallet',
-                        value: 'EWALLET',
-                        groupValue: metodeBayar.value,
-                        onChanged: (v) => metodeBayar.value = v,
-                      ),
-                    ],
-                  )),
-
-              const SizedBox(height: 10),
-
-              // ===== Total =====
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total (${cart.totalQty} item)',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      'Rp${cart.totalPrice}',
-                      style: const TextStyle(
-                        color: Color(0xFFE6F06A),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Obx(() {
+                if (isLoadingLokasi.value) {
+                  return const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
+                }
+                return TextButton(
+                  onPressed: _fillAlamatDariLokasi,
+                  child: const Text(
+                    'Ambil lokasi',
+                    style: TextStyle(color: Color(0xFFE7FF7A)),
+                  ),
+                );
+              }),
             ],
           ),
-        );
-      }),
-      bottomSheet: Obx(() {
-        if (cart.items.isEmpty) return const SizedBox.shrink();
+          const SizedBox(height: 10),
 
-        return Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          decoration: const BoxDecoration(
-            color: Color(0xFF22590A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          _InputBox(
+            controller: alamatC,
+            hint: 'Alamat otomatis dari lokasi kamu...',
+            minLines: 2,
+            maxLines: 4,
           ),
-          child: SafeArea(
-            top: false,
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE6F06A),
-                  foregroundColor: const Color(0xFF22590A),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+
+          const SizedBox(height: 16),
+
+          const Text(
+            'Catatan untuk Penjual',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          _InputBox(
+            controller: catatanC,
+            hint: 'Contoh: pedas sedang, tanpa bawang...',
+            minLines: 2,
+            maxLines: 4,
+          ),
+
+          const SizedBox(height: 16),
+
+          const Text(
+            'Metode Pembayaran',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          Obx(() => _PayOption(
+                label: 'COD (Bayar di Tempat)',
+                selected: metodeBayar.value == 'COD',
+                onTap: () => metodeBayar.value = 'COD',
+              )),
+          const SizedBox(height: 10),
+          Obx(() => _PayOption(
+                label: 'Transfer Bank',
+                selected: metodeBayar.value == 'TRANSFER',
+                onTap: () => metodeBayar.value = 'TRANSFER',
+              )),
+
+          const SizedBox(height: 18),
+
+          SizedBox(
+            height: 56,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE7FF7A),
+                foregroundColor: const Color(0xFF22590A),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                onPressed: () async {
-                  final alamat = alamatC.text.trim();
-                  if (alamat.isEmpty) {
-                    Get.snackbar('Oops', 'Alamat wajib diisi');
-                    return;
-                  }
+              ),
+              onPressed: () async {
+                final alamat = alamatC.text.trim();
+                if (alamat.isEmpty) {
+                  Get.snackbar('Alamat', 'Alamat wajib diisi');
+                  return;
+                }
+                if (cart.items.isEmpty) {
+                  Get.snackbar('Keranjang', 'Keranjang masih kosong');
+                  return;
+                }
 
-                  final items = cart.items
-                      .map((item) => {
-                            'product_id': item.product.id,
-                            'qty': item.qty,
-                            'price': item.product.price,
-                          })
-                      .toList();
+                // ✅ FIX: payload items dari List<CartItem>
+                final items = cart.items.map((ci) {
+                  final p = ci.product;
+                  final qty = ci.qty;
+                  return {
+                    'product_id': p.id,
+                    'qty': qty,
+                    'price': p.price,
+                  };
+                }).toList();
 
-                  // show loading
-                  Get.dialog(const Center(child: CircularProgressIndicator()),
-                      barrierDismissible: false);
+                Get.dialog(
+                  const Center(child: CircularProgressIndicator()),
+                  barrierDismissible: false,
+                );
 
-                  try {
-                    final resp = await ApiService.createOrder(
-                      total: cart.totalPrice,
-                      items: items.cast<Map<String, dynamic>>(),
-                      address: alamat,
-                      note: catatanC.text.trim(),
-                      paymentMethod: metodeBayar.value,
-                    );
+                try {
+                  final resp = await ApiService.createOrder(
+                    address: alamat,
+                    items: items,
+                    total: total,
+                    note: catatanC.text.trim(),
+                    paymentMethod: metodeBayar.value,
+                  );
 
-                    // success
-                    Get.back(); // close dialog
-                    cart.clear();
-                    Get.offAllNamed(AppRoutes.home);
-                    Get.snackbar('Sukses', 'Pesanan berhasil dibuat');
-                  } catch (e) {
-                    Get.back(); // close dialog
-                    Get.snackbar('Error', e.toString());
-                  }
-                },
-                child: Obx(() => Text(
-                      'Buat Pesanan • Rp${cart.totalPrice}',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    )),
+                  Get.back();
+                  cart.clear();
+
+                  final ord = (resp['order'] ?? resp['data'] ?? resp);
+                  final Map<String, dynamic> orderMap =
+                      (ord is Map<String, dynamic>) ? ord : <String, dynamic>{};
+
+                  Get.offAllNamed(AppRoutes.home);
+                  _showPesananBerlangsungPopup(orderMap);
+                } catch (e) {
+                  Get.back();
+                  Get.snackbar('Gagal', e.toString());
+                }
+              },
+              child: Text(
+                'Buat Pesanan • Rp$total',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
               ),
             ),
           ),
-        );
-      }),
+        ],
+      ),
     );
   }
 }
 
 class _InputBox extends StatelessWidget {
-  final TextEditingController controller;
   final String hint;
+  final TextEditingController controller;
   final int minLines;
   final int maxLines;
 
   const _InputBox({
-    required this.controller,
     required this.hint,
-    this.minLines = 1,
-    this.maxLines = 1,
+    required this.controller,
+    required this.minLines,
+    required this.maxLines,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: TextField(
-        controller: controller,
-        minLines: minLines,
-        maxLines: maxLines,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white54),
-          border: InputBorder.none,
+    return TextField(
+      controller: controller,
+      minLines: minLines,
+      maxLines: maxLines,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white38),
+        filled: true,
+        fillColor: const Color(0xFF2A2A2A),
+        contentPadding: const EdgeInsets.all(16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
         ),
       ),
     );
   }
 }
 
-class _PayTile extends StatelessWidget {
+class _PayOption extends StatelessWidget {
   final String label;
-  final String value;
-  final String groupValue;
-  final ValueChanged<String> onChanged;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _PayTile({
+  const _PayOption({
     required this.label,
-    required this.value,
-    required this.groupValue,
-    required this.onChanged,
+    required this.selected,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final selected = groupValue == value;
-
     return InkWell(
-      onTap: () => onChanged(value),
-      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFFE6F06A).withOpacity(0.14)
-              : Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected
-                ? const Color(0xFFE6F06A).withOpacity(0.7)
-                : Colors.white.withOpacity(0.08),
+            color: selected ? const Color(0xFFE7FF7A) : Colors.white12,
+            width: 1.5,
           ),
         ),
         child: Row(
           children: [
             Icon(
               selected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: selected ? const Color(0xFFE6F06A) : Colors.white54,
+              color: selected ? const Color(0xFFE7FF7A) : Colors.white38,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: selected ? Colors.white : Colors.white70,
-                  fontWeight: FontWeight.w800,
+                  color: selected ? Colors.white : Colors.white54,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),

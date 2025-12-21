@@ -75,7 +75,7 @@ class HomeView extends GetView<HomeController> {
                     icon: Icons.local_offer_rounded,
                     label: 'PROMO',
                     active: false,
-                    onTap: () => Get.snackbar('Promo', 'Nanti ke promo_view'),
+                    onTap: () => Get.toNamed(AppRoutes.promo),
                   ),
                   _NavItem(
                     icon: Icons.receipt_long_rounded,
@@ -87,8 +87,7 @@ class HomeView extends GetView<HomeController> {
                     icon: Icons.person_rounded,
                     label: 'PROFIL',
                     active: false,
-                    onTap: () =>
-                        Get.snackbar('Profil', 'Nanti ke profile_view'),
+                    onTap: () => Get.toNamed(AppRoutes.profile), // ✅ UBAH INI
                   ),
                 ],
               ),

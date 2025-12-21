@@ -1,7 +1,3 @@
-// ============================================================================
-// lib/features/auth/pages/signup_page.dart (UBAH FILE INI)
-// ============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -18,6 +14,7 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _nameC = TextEditingController(); // ✅ TAMBAH INI
   final _emailC = TextEditingController();
   final _passC = TextEditingController();
   final _confirmC = TextEditingController();
@@ -40,11 +37,20 @@ class _SignUpPageState extends State<SignUpPage>
 
   @override
   void dispose() {
+    _nameC.dispose(); // ✅ TAMBAH INI
     _emailC.dispose();
     _passC.dispose();
     _confirmC.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  // ✅ TAMBAH VALIDATOR NAMA
+  String? _validateName(String? v) {
+    final s = (v ?? '').trim();
+    if (s.isEmpty) return 'Nama wajib diisi';
+    if (s.length < 3) return 'Nama minimal 3 karakter';
+    return null;
   }
 
   String? _validateEmail(String? v) {
@@ -72,6 +78,7 @@ class _SignUpPageState extends State<SignUpPage>
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    final name = _nameC.text.trim(); // ✅ AMBIL NAMA
     final email = _emailC.text.trim();
     final pass = _passC.text;
     final confirm = _confirmC.text;
@@ -89,8 +96,12 @@ class _SignUpPageState extends State<SignUpPage>
     }
 
     try {
-      // Asumsi controller punya method register(email, password)
-      await auth.register(email: email, password: pass);
+      // ✅ KIRIM NAMA JUGA
+      await auth.register(
+        email: email,
+        password: pass,
+        fullName: name, // ✅ TAMBAH PARAMETER INI
+      );
 
       Get.snackbar(
         'Berhasil',
@@ -101,7 +112,6 @@ class _SignUpPageState extends State<SignUpPage>
         margin: const EdgeInsets.all(16),
       );
 
-      // Balik ke login / atau langsung ke home sesuai kebutuhanmu
       Get.offAllNamed(AppRoutes.login);
     } catch (e) {
       Get.snackbar(
@@ -223,6 +233,61 @@ class _SignUpPageState extends State<SignUpPage>
                   key: _formKey,
                   child: Column(
                     children: [
+                      // ✅ NAMA LENGKAP FIELD (BARU)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: TextFormField(
+                          controller: _nameC,
+                          keyboardType: TextInputType.name,
+                          autofillHints: const [AutofillHints.name],
+                          style: const TextStyle(
+                            color: Color(0xFF2D5016),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Nama Lengkap',
+                            labelStyle: const TextStyle(
+                              color: Color(0xFF6B8E23),
+                            ),
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFD700).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.person_rounded,
+                                color: Color(0xFF6B8E23),
+                                size: 20,
+                              ),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 20,
+                            ),
+                          ),
+                          validator: _validateName,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
                       // Email Field
                       Container(
                         decoration: BoxDecoration(
@@ -408,23 +473,21 @@ class _SignUpPageState extends State<SignUpPage>
 
                       const SizedBox(height: 28),
 
-                      // Button Register (pakai Obx biar bisa loading dari controller)
+                      // Button Register
                       Obx(() {
                         final isLoading = auth.isLoading.value;
                         return SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: isLoading
-                                ? null
-                                : () => _doRegister(auth),
+                            onPressed:
+                                isLoading ? null : () => _doRegister(auth),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFFD700),
                               foregroundColor: const Color(0xFF2D5016),
                               elevation: 10,
-                              shadowColor: const Color(
-                                0xFFFFD700,
-                              ).withOpacity(0.4),
+                              shadowColor:
+                                  const Color(0xFFFFD700).withOpacity(0.4),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(18),
                               ),

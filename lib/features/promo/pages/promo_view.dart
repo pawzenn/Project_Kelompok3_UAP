@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../../data/models/promo.dart';
+import '../controller/promo_controller.dart';
+
 class PromoView extends StatefulWidget {
   const PromoView({super.key});
 
@@ -12,9 +15,15 @@ class PromoView extends StatefulWidget {
 class _PromoViewState extends State<PromoView> {
   final scrollC = ScrollController();
 
-  // supaya bisa scroll ke section promo tertentu
-  final keyPromo20 = GlobalKey();
-  final keyPromo5k = GlobalKey();
+  // map key per promo code supaya chip bisa scroll ke card yg sesuai
+  final Map<String, GlobalKey> _promoKeys = {};
+
+  PromoController get c => Get.find<PromoController>();
+
+  GlobalKey _keyOf(Promo p) {
+    final k = _promoKeys.putIfAbsent(p.code, () => GlobalKey());
+    return k;
+  }
 
   void _scrollTo(GlobalKey key) {
     final ctx = key.currentContext;
@@ -27,12 +36,52 @@ class _PromoViewState extends State<PromoView> {
     );
   }
 
-  void _showPromoDetail({
-    required String title,
-    required String subtitle,
-    required String code,
-    required String note,
-  }) {
+  String _chipLabel(Promo p) {
+    if (p.type == 'percent') return 'Diskon ${p.value}%';
+    return 'Diskon ${_rupiah(p.value)}';
+  }
+
+  String _subtitleTop(Promo p) {
+    final min = _rupiah(p.minOrder);
+    if (p.type == 'percent') {
+      final max =
+          p.maxDiscount != null ? ' • Maks ${_rupiah(p.maxDiscount!)}' : '';
+      return 'Min $min$max';
+    }
+    return 'Min $min';
+  }
+
+  String _bigText(Promo p) {
+    if (p.type == 'percent') return 'Diskon\n${p.value}%';
+    return 'DISKON\n${_rupiahShort(p.value)}';
+  }
+
+  String _smallText(Promo p) {
+    final min = _rupiah(p.minOrder);
+    if (p.type == 'percent' && p.maxDiscount != null) {
+      return 'Min $min • Maks ${_rupiah(p.maxDiscount!)}';
+    }
+    return 'Min $min';
+  }
+
+  String _note(Promo p) {
+    final min = _rupiah(p.minOrder);
+    final diskon = p.type == 'percent' ? '${p.value}%' : _rupiah(p.value);
+    final max = (p.type == 'percent' && p.maxDiscount != null)
+        ? '\n- Maks potongan: ${_rupiah(p.maxDiscount!)}'
+        : '';
+    final desc = (p.description ?? '').trim().isEmpty
+        ? ''
+        : '\n\n${p.description!.trim()}';
+
+    return 'Syarat & Ketentuan:\n'
+        '- Diskon: $diskon\n'
+        '- Min order: $min'
+        '$max'
+        '$desc';
+  }
+
+  void _showPromoDetail({required Promo p}) {
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
@@ -58,7 +107,7 @@ class _PromoViewState extends State<PromoView> {
               ),
               const SizedBox(height: 14),
               Text(
-                title,
+                p.title,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -67,7 +116,7 @@ class _PromoViewState extends State<PromoView> {
               ),
               const SizedBox(height: 6),
               Text(
-                subtitle,
+                _subtitleTop(p),
                 style: const TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 14),
@@ -85,7 +134,7 @@ class _PromoViewState extends State<PromoView> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        code,
+                        p.code,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
@@ -95,12 +144,15 @@ class _PromoViewState extends State<PromoView> {
                     ),
                     TextButton(
                       onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: code));
+                        await Clipboard.setData(ClipboardData(text: p.code));
                         Get.back();
                         Get.snackbar(
                           'Promo',
-                          'Kode promo disalin: $code',
+                          'Kode promo disalin: ${p.code}',
                           snackPosition: SnackPosition.TOP,
+                          backgroundColor: const Color(0xFF22590A),
+                          colorText: Colors.white,
+                          margin: const EdgeInsets.all(16),
                         );
                       },
                       child: const Text(
@@ -116,7 +168,7 @@ class _PromoViewState extends State<PromoView> {
               ),
               const SizedBox(height: 12),
               Text(
-                note,
+                _note(p),
                 style: const TextStyle(color: Colors.white70, height: 1.3),
               ),
               const SizedBox(height: 16),
@@ -135,8 +187,11 @@ class _PromoViewState extends State<PromoView> {
                     Get.back();
                     Get.snackbar(
                       'Promo',
-                      'Promo $code siap dipakai di checkout (nanti kita hubungkan).',
+                      'Promo ${p.code} siap dipakai di checkout',
                       snackPosition: SnackPosition.TOP,
+                      backgroundColor: const Color(0xFF22590A),
+                      colorText: Colors.white,
+                      margin: const EdgeInsets.all(16),
                     );
                   },
                   child: const Text(
@@ -165,177 +220,209 @@ class _PromoViewState extends State<PromoView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
-      body: SingleChildScrollView(
-        controller: scrollC,
-        child: Column(
-          children: [
-            // ================= HERO =================
-            Stack(
-              children: [
-                SizedBox(
-                  height: 340,
-                  width: double.infinity,
-                  child: Image.network(
-                    // ganti sesuai kebutuhan
-                    'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1400&q=80',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                Container(
-                  height: 340,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.25),
-                        Colors.black.withOpacity(0.70),
-                      ],
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Get.back(),
-                          icon:
-                              const Icon(Icons.arrow_back, color: Colors.white),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'Promo light',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 22,
-                  top: 96,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Lalapan\nBang Ajey',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontStyle: FontStyle.italic,
-                          height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Klaim Promomu!!',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.95),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 26,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withOpacity(0.4),
-                              offset: const Offset(0, 2),
-                              blurRadius: 8,
+      body: Obx(() {
+        final isLoading = c.isLoading.value;
+        final promos = c.promos;
+
+        return SingleChildScrollView(
+          controller: scrollC,
+          child: Column(
+            children: [
+              // ================= HERO =================
+              Stack(
+                children: [
+                  SizedBox(
+                    height: 340,
+                    width: double.infinity,
+                    child: Image.network(
+                      'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1400&q=80',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: const Color(0xFF22590A),
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.white54,
+                              size: 64,
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _PromoChip(
-                            label: 'Diskon 20%',
-                            onTap: () => _scrollTo(keyPromo20),
                           ),
-                          const SizedBox(width: 12),
-                          _PromoChip(
-                            label: 'Diskon 5k',
-                            onTap: () => _scrollTo(keyPromo5k),
+                        );
+                      },
+                    ),
+                  ),
+                  Container(
+                    height: 340,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.25),
+                          Colors.black.withOpacity(0.70),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Get.back(),
+                            icon: const Icon(Icons.arrow_back,
+                                color: Colors.white),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text('Promo',
+                              style: TextStyle(color: Colors.white70)),
+                          const Spacer(),
+                          // ✅ FIX: Panggil method dengan benar
+                          IconButton(
+                            onPressed: () => c.loadPromos(),
+                            icon:
+                                const Icon(Icons.refresh, color: Colors.white),
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 22,
+                    top: 96,
+                    right: 16,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Lalapan\nBang Ajey',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontStyle: FontStyle.italic,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Klaim Promomu!!',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 26,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withOpacity(0.4),
+                                offset: const Offset(0, 2),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (isLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.6,
+                                valueColor:
+                                    AlwaysStoppedAnimation(Color(0xFFE6F06A)),
+                              ),
+                            ),
+                          )
+                        else if (promos.isEmpty)
+                          const Text(
+                            'Belum ada promo aktif',
+                            style: TextStyle(color: Colors.white70),
+                          )
+                        else
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (final p in promos.take(6)) ...[
+                                  _PromoChip(
+                                    label: _chipLabel(p),
+                                    onTap: () => _scrollTo(_keyOf(p)),
+                                  ),
+                                  const SizedBox(width: 12),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // ================= BODY BG =================
+              Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF22590A),
+                      Color(0xFF0F0F0F),
                     ],
                   ),
                 ),
-              ],
-            ),
-
-            // ================= BODY BG =================
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF22590A),
-                    Color(0xFF0F0F0F),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                  child: Column(
+                    children: [
+                      if (isLoading)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 26, bottom: 26),
+                          child: CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation(Color(0xFFE6F06A)),
+                          ),
+                        )
+                      else if (promos.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 18),
+                          child: Text(
+                            'Belum ada promo aktif',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        )
+                      else ...[
+                        for (int i = 0; i < promos.length; i++) ...[
+                          Container(
+                            key: _keyOf(promos[i]),
+                            child: _PromoPosterCard(
+                              imageUrl: _promoImageByIndex(i),
+                              titleTop: promos[i].title,
+                              subtitleTop: _subtitleTop(promos[i]),
+                              bigText: _bigText(promos[i]),
+                              smallText: _smallText(promos[i]),
+                              code: promos[i].code,
+                              theme: promos[i].type == 'percent'
+                                  ? _PromoPosterTheme.brown
+                                  : _PromoPosterTheme.red,
+                              onTap: () => _showPromoDetail(p: promos[i]),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        const SizedBox(height: 44),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-                child: Column(
-                  children: [
-                    // ===== CARD PROMO 20% =====
-                    Container(
-                      key: keyPromo20,
-                      child: _PromoPosterCard(
-                        imageUrl:
-                            'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1400&q=80',
-                        titleTop: 'Promo semua menu',
-                        subtitleTop: 'Spesial Akhir Tahun',
-                        bigText: 'Diskon\n20%',
-                        smallText: 'Berlaku 1 - 31 Desember\npesan segera!',
-                        code: 'UAPMOBILE',
-                        onTap: () => _showPromoDetail(
-                          title: 'Diskon 20% Semua Menu',
-                          subtitle:
-                              'Maks potongan sesuai ketentuan • Min order sesuai ketentuan',
-                          code: 'UAPMOBILE',
-                          note:
-                              'Syarat & Ketentuan:\n- Berlaku periode 1-31 Desember\n- Berlaku untuk menu tertentu\n- Tidak dapat digabung promo lain (opsional)',
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ===== CARD PROMO 5K =====
-                    Container(
-                      key: keyPromo5k,
-                      child: _PromoPosterCard(
-                        imageUrl:
-                            'https://images.unsplash.com/photo-1604909052743-94e838986d24?auto=format&fit=crop&w=1400&q=80',
-                        titleTop: 'Lalapan Bang Ajey',
-                        subtitleTop: '',
-                        bigText: 'DISKON\n5K',
-                        smallText: '',
-                        code: 'DISKONPELAJAR',
-                        theme: _PromoPosterTheme.red,
-                        onTap: () => _showPromoDetail(
-                          title: 'Diskon 5K',
-                          subtitle: 'Min order sesuai ketentuan',
-                          code: 'DISKONPELAJAR',
-                          note:
-                              'Syarat & Ketentuan:\n- Berlaku untuk pengguna tertentu\n- Berlaku selama periode promo\n- Tidak dapat digabung promo lain (opsional)',
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 60),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      }),
     );
   }
 }
@@ -426,21 +513,30 @@ class _PromoPosterCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // background image with dark overlay
             Positioned.fill(
-              child: Image.network(imageUrl, fit: BoxFit.cover),
-            ),
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withOpacity(0.35),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: cardBg,
+                    child: const Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        color: Colors.white24,
+                        size: 48,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-
+            Positioned.fill(
+                child: Container(color: Colors.black.withOpacity(0.35))),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Row(
                 children: [
-                  // left: circle image
                   Container(
                     width: 92,
                     height: 92,
@@ -451,12 +547,11 @@ class _PromoPosterCard extends StatelessWidget {
                       image: DecorationImage(
                         image: NetworkImage(imageUrl),
                         fit: BoxFit.cover,
+                        onError: (error, stackTrace) {},
                       ),
                     ),
                   ),
                   const SizedBox(width: 14),
-
-                  // right: text
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,8 +610,6 @@ class _PromoPosterCard extends StatelessWidget {
                 ],
               ),
             ),
-
-            // subtle border
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -530,4 +623,34 @@ class _PromoPosterCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ===================== HELPERS =====================
+
+String _rupiah(int n) {
+  final s = n.toString();
+  final b = StringBuffer();
+  for (int i = 0; i < s.length; i++) {
+    final idxFromEnd = s.length - i;
+    b.write(s[i]);
+    if (idxFromEnd > 1 && idxFromEnd % 3 == 1) b.write('.');
+  }
+  return 'Rp$b';
+}
+
+String _rupiahShort(int n) {
+  if (n >= 1000000) return '${(n / 1000000).floor()}JT';
+  if (n >= 1000) return '${(n / 1000).floor()}K';
+  return n.toString();
+}
+
+// gambar default per index biar tetap cakep (opsional)
+String _promoImageByIndex(int i) {
+  const imgs = [
+    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1604909052743-94e838986d24?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1400&q=80',
+  ];
+  return imgs[i % imgs.length];
 }

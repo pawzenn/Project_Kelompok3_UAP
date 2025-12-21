@@ -17,4 +17,5 @@ class AppRoutes {
   static const profile = '/profile';
   static const promo = '/promo';
   static const adminOrders = '/admin/orders';
+  static const String admin = '/admin';
 }

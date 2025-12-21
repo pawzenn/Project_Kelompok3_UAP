@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3000;
 const SUPA_URL = process.env.SUPA_URL || process.env.SUPABASE_URL;
 const SUPA_SERVICE_ROLE_KEY = process.env.SUPA_SERVICE_ROLE_KEY;
 
-// Firebase Admin via JSON env (bukan file path)
+// Firebase Admin via JSON env (recommended for hosting)
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
 if (!SUPA_URL) {
@@ -34,13 +34,12 @@ if (!FIREBASE_SERVICE_ACCOUNT_JSON) {
   process.exit(1);
 }
 
-// ---------- INIT FIREBASE ADMIN (ENV JSON) ----------
+// ---------- INIT FIREBASE ADMIN (JSON ENV) ----------
 let serviceAccount;
 try {
-  // Railway kadang menyimpan value dengan newline/escape, tapi JSON.parse aman
   serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON);
 } catch (e) {
-  console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:", e.message);
+  console.error("❌ FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON:", e.message);
   process.exit(1);
 }
 

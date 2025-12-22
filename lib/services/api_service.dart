@@ -35,6 +35,37 @@ class ApiService {
   }
 
   // =========================================================
+  // AUTH / ME
+  // =========================================================
+
+  /// GET /api/me
+  /// Return contoh:
+  /// {
+  ///   "uid": "...",
+  ///   "email": "...",
+  ///   "is_admin": true/false,
+  ///   "admin_reason": "env_admin_emails"|"custom_claim"|"none"
+  /// }
+  static Future<Map<String, dynamic>> getMe() async {
+    final token = await _getIdToken();
+    if (token == null) throw Exception('User not logged in');
+
+    final resp = await http.get(
+      Uri.parse('$_baseUrl/api/me'),
+      headers: _headers(token),
+    );
+
+    if (resp.statusCode != 200) {
+      throw _httpError(resp, 'Failed to get /api/me');
+    }
+
+    final decoded = _decodeBody(resp);
+    if (decoded is Map<String, dynamic>) return decoded;
+
+    throw Exception('Unexpected response format: ${resp.body}');
+  }
+
+  // =========================================================
   // USER - ORDERS
   // =========================================================
 
@@ -171,7 +202,6 @@ class ApiService {
   }
 
   /// GET /api/admin/orders/:id
-  /// dipakai untuk admin_order_detail_view
   static Future<Map<String, dynamic>> fetchAdminOrderDetail({
     required String orderId,
   }) async {

@@ -25,7 +25,7 @@ const SUPA_SERVICE_ROLE_KEY = process.env.SUPA_SERVICE_ROLE_KEY;
 const FIREBASE_SERVICE_ACCOUNT_JSON = process.env.FIREBASE_SERVICE_ACCOUNT_JSON; // recommended
 const FIREBASE_SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH; // optional
 
-// Admin access via env list
+// Admin access via ENV
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map((s) => s.trim().toLowerCase())
@@ -65,12 +65,10 @@ admin.initializeApp({
 });
 
 if (!process.env.FIREBASE_DATABASE_URL) {
-  console.warn(
-    "⚠️ FIREBASE_DATABASE_URL belum diset. Fitur RTDB notif/token tidak akan jalan."
-  );
+  console.warn("⚠️ FIREBASE_DATABASE_URL belum diset. RTDB notif/token tidak akan jalan.");
 }
 
-// =================== INIT SUPABASE ===================
+// =================== INIT SUPABASE (SERVICE ROLE) ===================
 const supabase = createClient(SUPA_URL, SUPA_SERVICE_ROLE_KEY);
 
 // =================== AUTH MIDDLEWARE ===================
@@ -91,54 +89,54 @@ async function requireAuth(req, res, next) {
   }
 }
 
-/**
- * Admin check: 3 sumber (OR)
- * 1) Firebase custom claim: decoded.admin === true
- * 2) ENV ADMIN_EMAILS (email whitelist)
- * 3) Tabel Supabase public.user_roles: firebase_uid = uid, role = 'admin'
- */
-async function isAdminUser(decoded) {
-  // 1) custom claim
-  if (decoded && decoded.admin === true) return { ok: true, source: "claim" };
+// =================== ADMIN CHECK HELPERS ===================
 
-  // 2) env whitelist
-  const email = (decoded.email || "").toLowerCase();
-  if (email && ADMIN_EMAILS.includes(email)) return { ok: true, source: "env_email" };
-
-  // 3) user_roles table
+// 1) Check Supabase user_roles (fallback)
+async function isAdminFromSupabase(firebaseUid, email) {
   try {
-    const uid = decoded.uid;
+    const uid = String(firebaseUid || "");
+    const em = String(email || "").toLowerCase();
+
+    if (!uid && !em) return false;
+
+    // tabel kamu: public.user_roles
+    // kolom: firebase_uid (text), email (text), role (text)
     const { data, error } = await supabase
-      .from("user_roles") // ✅ table kamu: user_roles
+      .from("user_roles")
       .select("role")
-      .eq("firebase_uid", uid) // ✅ kolom kamu: firebase_uid
-      .maybeSingle();
+      .or(uid ? `firebase_uid.eq.${uid}` : "", em ? `email.eq.${em}` : "")
+      .limit(1);
 
-    if (!error && data?.role) {
-      const role = String(data.role).toLowerCase().trim();
-      if (role === "admin") return { ok: true, source: "user_roles_table" };
-    }
-  } catch (_) {}
+    if (error) return false;
+    const role = (data?.[0]?.role || "").toString().toLowerCase();
+    return role === "admin";
+  } catch {
+    return false;
+  }
+}
 
-  return { ok: false, source: "none" };
+// 2) Main check: claim / ENV / supabase fallback
+async function isAdminUser(decoded) {
+  if (decoded && decoded.admin === true) return true;
+
+  const email = (decoded.email || "").toLowerCase();
+  if (email && ADMIN_EMAILS.includes(email)) return true;
+
+  // fallback: cek dari supabase user_roles
+  return await isAdminFromSupabase(decoded.uid, decoded.email);
 }
 
 async function requireAdmin(req, res, next) {
   try {
     if (!req.user) return res.status(401).json({ message: "Not authenticated" });
 
-    const check = await isAdminUser(req.user);
-    if (!check.ok) {
+    const ok = await isAdminUser(req.user);
+    if (!ok) {
       return res.status(403).json({
         message: "Forbidden. Admin only.",
-        hint:
-          "Set ADMIN_EMAILS in env OR set Firebase custom claim admin=true OR insert into public.user_roles(firebase_uid, role) = ('<uid>', 'admin')",
+        hint: "Set ADMIN_EMAILS in env OR set Firebase custom claim admin=true OR insert role=admin in public.user_roles",
       });
     }
-
-    // simpan untuk debugging kalau perlu
-    req.adminSource = check.source;
-
     return next();
   } catch (e) {
     return res.status(500).json({ message: "Admin check failed", error: e.message });
@@ -170,7 +168,16 @@ function isValidStatus(s) {
   );
 }
 
+function statusLabel(s) {
+  const st = normalizeStatus(s);
+  if (st === ORDER_STATUS.RECEIVED) return "Pesanan Diterima";
+  if (st === ORDER_STATUS.PROCESSING) return "Pesanan Diproses";
+  if (st === ORDER_STATUS.READY) return "Pesanan Siap";
+  return st;
+}
+
 // =================== NOTIF HELPERS (RTDB + FCM) ===================
+
 async function getUserFcmTokens(uid) {
   if (!process.env.FIREBASE_DATABASE_URL) return [];
   const snap = await admin.database().ref(`fcm_tokens/${uid}`).once("value");
@@ -190,23 +197,11 @@ async function saveInboxNotification(uid, payload) {
   return ref.key;
 }
 
-function statusLabel(s) {
-  const st = normalizeStatus(s);
-  if (st === ORDER_STATUS.RECEIVED) return "Pesanan Diterima";
-  if (st === ORDER_STATUS.PROCESSING) return "Pesanan Diproses";
-  if (st === ORDER_STATUS.READY) return "Pesanan Siap";
-  return st;
-}
-
 async function notifyUser(uid, { title, body, data = {}, type = "general" }) {
   const tokens = await getUserFcmTokens(uid);
 
-  await saveInboxNotification(uid, {
-    title,
-    body,
-    type,
-    data,
-  });
+  // simpan inbox dulu
+  await saveInboxNotification(uid, { title, body, type, data });
 
   if (!tokens.length) return { sent: 0, reason: "no_tokens" };
 
@@ -218,22 +213,14 @@ async function notifyUser(uid, { title, body, data = {}, type = "general" }) {
       ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
     },
     android: {
-      notification: {
-        channelId: "promo_channel",
-        sound: "bang_ajeyy",
-      },
+      notification: { channelId: "promo_channel", sound: "bang_ajeyy" },
     },
-    apns: {
-      payload: {
-        aps: {
-          sound: "bang_ajeyy.mp3",
-        },
-      },
-    },
+    apns: { payload: { aps: { sound: "bang_ajeyy.mp3" } } },
   };
 
   const resp = await admin.messaging().sendEachForMulticast(message);
 
+  // bersihkan token invalid
   const invalidTokens = [];
   resp.responses.forEach((r, idx) => {
     if (!r.success) {
@@ -279,23 +266,15 @@ app.get("/health", (req, res) => {
   res.json({ ok: true, message: "Server is running", port: Number(PORT) });
 });
 
-/**
- * ✅ Endpoint penting: app panggil ini untuk tau admin / user
- * GET /api/me
- */
+// ✅ dipakai Flutter untuk cek admin via backend
 app.get("/api/me", requireAuth, async (req, res) => {
   try {
-    const uid = req.user.uid;
-    const email = (req.user.email || "").toLowerCase();
-
-    const check = await isAdminUser(req.user);
-
+    const is_admin = await isAdminUser(req.user);
     return res.json({
-      uid,
-      email,
-      isAdmin: check.ok,
-      adminSource: check.source,
-      adminClaim: req.user.admin === true,
+      uid: req.user.uid,
+      email: req.user.email || null,
+      is_admin,
+      claims: req.user || {},
     });
   } catch (e) {
     return res.status(500).json({ message: "Server error", error: e.message });
@@ -418,6 +397,7 @@ app.get("/api/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => 
   }
 });
 
+// PATCH admin status (naik 1 step)
 app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -465,6 +445,7 @@ app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req,
 
     if (updErr) return res.status(500).json({ message: "Update failed", error: updErr });
 
+    // notif user
     const title = "Update Pesanan";
     const body = `Pesanan kamu sekarang: ${statusLabel(next)}`;
 
@@ -472,10 +453,7 @@ app.patch("/api/admin/orders/:id/status", requireAuth, requireAdmin, async (req,
       title,
       body,
       type: "order_status",
-      data: {
-        order_id: orderId,
-        status: next,
-      },
+      data: { order_id: orderId, status: next },
     });
 
     return res.json({ ok: true, order: updated });

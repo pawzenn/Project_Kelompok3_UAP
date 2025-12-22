@@ -16,6 +16,7 @@ class MenuDetailSheet extends StatefulWidget {
 class _MenuDetailSheetState extends State<MenuDetailSheet>
     with SingleTickerProviderStateMixin {
   int qty = 1;
+  bool _isProcessing = false; // ✅ Flag untuk prevent double tap
 
   late final AnimationController _anim;
   late final Animation<double> _fade;
@@ -28,15 +29,25 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
 
     _anim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 420),
+      duration:
+          const Duration(milliseconds: 600), // ✅ Lebih smooth (dari 420ms)
     );
 
-    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
-    _scale = Tween<double>(begin: 0.92, end: 1.0).animate(
-      CurvedAnimation(parent: _anim, curve: Curves.easeOutBack),
+    _fade = CurvedAnimation(
+      parent: _anim,
+      curve: Curves.easeInOut, // ✅ Lebih smooth
     );
-    _slide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic));
+    _scale = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _anim,
+        curve: Curves.easeOutCubic, // ✅ Lebih smooth
+      ),
+    );
+    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(CurvedAnimation(
+      parent: _anim,
+      curve: Curves.easeOutCubic, // ✅ Lebih smooth
+    ));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _anim.forward();
@@ -49,20 +60,79 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
     super.dispose();
   }
 
-  void _closeFast() {
-    if (Get.isOverlaysOpen) {
-      Get.back(); // tutup bottomsheet
+  void _closeFast() async {
+    if (!mounted) return;
+
+    // ✅ Animate reverse untuk smooth closing
+    await _anim.reverse();
+
+    if (!mounted) return;
+
+    if (Get.isBottomSheetOpen ?? false) {
+      Get.back();
     } else if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
+    }
+  }
+
+  void _addToCart() async {
+    // ✅ Prevent double tap
+    if (_isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+    });
+
+    final p = widget.product;
+    final cart = Get.find<CartController>();
+
+    try {
+      // Tambahkan ke cart
+      cart.add(p, qty: qty);
+
+      // ✅ Animate reverse untuk smooth closing
+      await _anim.reverse();
+
+      // Tutup bottom sheet
+      if (!mounted) return;
+
+      if (Get.isBottomSheetOpen ?? false) {
+        Get.back();
+      } else if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // Tunggu sebentar untuk memastikan sheet tertutup
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // Tampilkan snackbar
+      if (Get.context != null) {
+        Get.snackbar(
+          'Keranjang',
+          'Berhasil menambahkan ${p.name} x$qty',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF22590A),
+          colorText: Colors.white,
+          margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error adding to cart: $e');
+    } finally {
+      // Reset flag setelah selesai
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
-
-    // ✅ Cart instance tunggal dari HomeBinding
-    final cart = Get.find<CartController>();
 
     final w = MediaQuery.of(context).size.width;
     final dialogW = (w * 0.88).clamp(320.0, 440.0);
@@ -158,7 +228,9 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                     _QtyButton(
                                       icon: Icons.remove,
                                       onTap: () {
-                                        if (qty > 1) setState(() => qty--);
+                                        if (qty > 1 && !_isProcessing) {
+                                          setState(() => qty--);
+                                        }
                                       },
                                     ),
                                     const SizedBox(width: 14),
@@ -187,7 +259,11 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                     const SizedBox(width: 14),
                                     _QtyButton(
                                       icon: Icons.add,
-                                      onTap: () => setState(() => qty++),
+                                      onTap: () {
+                                        if (!_isProcessing) {
+                                          setState(() => qty++);
+                                        }
+                                      },
                                     ),
                                   ],
                                 ),
@@ -204,24 +280,27 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                     ),
-                                    onPressed: () {
-                                      cart.add(p, qty: qty);
-
-                                      _closeFast(); // ✅ balik ke Home (sheet nutup)
-
-                                      Get.snackbar(
-                                        'Keranjang',
-                                        'Berhasil menambahkan ${p.name} x$qty',
-                                        snackPosition: SnackPosition.BOTTOM,
-                                      );
-                                    },
-                                    child: Text(
-                                      'Tambah ke Keranjang • Rp${p.price} x$qty',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontFamily: 'Montserrat',
-                                      ),
-                                    ),
+                                    onPressed:
+                                        _isProcessing ? null : _addToCart,
+                                    child: _isProcessing
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                Color(0xFF22590A),
+                                              ),
+                                            ),
+                                          )
+                                        : Text(
+                                            'Tambah ke Keranjang • Rp${p.price} x$qty',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontFamily: 'Montserrat',
+                                            ),
+                                          ),
                                   ),
                                 ),
                                 const SizedBox(height: 6),

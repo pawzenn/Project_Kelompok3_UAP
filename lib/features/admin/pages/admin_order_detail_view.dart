@@ -324,7 +324,7 @@ class _Content extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                onPressed: () => Get.back(),
+                onPressed: () => Get.back(result: true),
                 child: const Text(
                   'Tutup',
                   style: TextStyle(fontWeight: FontWeight.w900),

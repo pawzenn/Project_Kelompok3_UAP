@@ -4,6 +4,9 @@ import 'package:get/get.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../../app/routes/app_routes.dart';
 
+import '../controller/admin_orders_controller.dart';
+import '../controller/admin_promo_controller.dart';
+
 import 'admin_orders_view.dart';
 import 'admin_promo_view.dart';
 
@@ -58,6 +61,21 @@ class _AdminShellViewState extends State<AdminShellView> {
     }
   }
 
+  void _onNavTap(int i) async {
+    setState(() => index = i);
+
+    // ✅ AUTO REFRESH saat pindah tab
+    if (i == 0) {
+      // tab Pesanan
+      final c = Get.find<AdminOrdersController>();
+      await c.fetchOrders();
+    } else if (i == 1) {
+      // tab Promo
+      final c = Get.find<AdminPromoController>();
+      await c.loadPromos();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = const [
@@ -88,7 +106,7 @@ class _AdminShellViewState extends State<AdminShellView> {
         ),
         child: BottomNavigationBar(
           currentIndex: index,
-          onTap: (i) => setState(() => index = i),
+          onTap: _onNavTap, // ✅ pakai handler baru
           backgroundColor: const Color(0xFF0F0F0F),
           selectedItemColor: const Color(0xFFE6F06A),
           unselectedItemColor: Colors.white54,

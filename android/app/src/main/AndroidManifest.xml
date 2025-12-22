@@ -8,7 +8,7 @@
 
 
     <application
-        android:label="project_uap"
+        android:label="Bang Ajey"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

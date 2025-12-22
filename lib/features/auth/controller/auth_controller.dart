@@ -1,18 +1,18 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
+
+import '../../../services/api_service.dart';
 
 class AuthController extends GetxController {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final _auth = FirebaseAuth.instance;
 
-  final RxBool isLoading = false.obs;
+  final isLoading = false.obs;
 
-  // Observable user (boleh dipakai UI lain)
-  Rx<User?> firebaseUser = Rx<User?>(null);
+  // Observable user
+  final Rx<User?> firebaseUser = Rx<User?>(null);
 
-  // Role state
+  // ✅ role dari BACKEND
   final RxBool isAdmin = false.obs;
   final RxString role = 'user'.obs;
 
@@ -22,9 +22,7 @@ class AuthController extends GetxController {
     firebaseUser.bindStream(_auth.authStateChanges());
   }
 
-  // =========================
-  // ✅ ROLE CHECK VIA BACKEND
-  // =========================
+  /// ✅ ambil role dari backend: GET /api/me
   Future<void> refreshRoleFromBackend() async {
     final u = _auth.currentUser;
     if (u == null) {
@@ -34,44 +32,22 @@ class AuthController extends GetxController {
     }
 
     try {
-      // Force refresh token biar claim/admin update kebaca juga
-      final token = await u.getIdToken(true);
-
-      final resp = await http.get(
-        Uri.parse('${BackendApi.baseUrl}/api/me'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (resp.statusCode != 200) {
-        debugPrint('❌ /api/me failed: ${resp.statusCode} ${resp.body}');
-        isAdmin.value = false;
-        role.value = 'user';
-        return;
-      }
-
-      final decoded = jsonDecode(resp.body);
-      final bool adminFlag = decoded is Map<String, dynamic>
-          ? (decoded['is_admin'] == true)
-          : false;
+      final me = await ApiService.getMe();
+      final adminFlag = me['is_admin'] == true;
 
       isAdmin.value = adminFlag;
       role.value = adminFlag ? 'admin' : 'user';
 
-      debugPrint(
-          '✅ ROLE VIA BACKEND => isAdmin=$adminFlag email=${u.email} uid=${u.uid}');
+      debugPrint('✅ /api/me => $me');
     } catch (e) {
-      debugPrint('❌ refreshRoleFromBackend error: $e');
+      // kalau backend error, default aman = user
       isAdmin.value = false;
       role.value = 'user';
+      debugPrint('❌ refreshRoleFromBackend error: $e');
     }
   }
 
-  // =========================
-  // ✅ REGISTER (FIREBASE)
-  // =========================
+  // ✅ REGISTER WITH FIREBASE
   Future<void> register({
     required String email,
     required String password,
@@ -91,7 +67,7 @@ class AuthController extends GetxController {
       debugPrint('✅ Register berhasil: ${userCredential.user?.email}');
       debugPrint('✅ Display Name: ${userCredential.user?.displayName}');
 
-      // setelah register, cek role via backend
+      // setelah register, default user
       await refreshRoleFromBackend();
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase Error: ${e.code} - ${e.message}');
@@ -118,9 +94,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // =========================
-  // ✅ LOGIN (FIREBASE)
-  // =========================
+  // ✅ LOGIN WITH FIREBASE
   Future<void> login({
     required String email,
     required String password,
@@ -133,10 +107,9 @@ class AuthController extends GetxController {
         password: password,
       );
 
-      final u = _auth.currentUser;
-      debugPrint('✅ Login berhasil uid=${u?.uid} email=${u?.email}');
+      debugPrint('✅ Login berhasil');
 
-      // ✅ cek role via backend
+      // ✅ cek role setelah login
       await refreshRoleFromBackend();
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ Firebase Error: ${e.code} - ${e.message}');
@@ -166,9 +139,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // =========================
   // ✅ LOGOUT
-  // =========================
   Future<void> logout() async {
     try {
       await _auth.signOut();
@@ -180,15 +151,4 @@ class AuthController extends GetxController {
       throw 'Gagal logout';
     }
   }
-}
-
-// =========================
-// ✅ BACKEND BASE URL
-// =========================
-class BackendApi {
-  BackendApi._();
-
-  /// samakan dengan ApiService kamu
-  static const String baseUrl =
-      'https://projectkelompok3uap-production.up.railway.app';
 }

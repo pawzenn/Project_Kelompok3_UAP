@@ -18,6 +18,13 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
           'Pesanan Masuk',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
+        actions: [
+          IconButton(
+            onPressed: controller.fetchOrders, // ✅ manual refresh
+            icon: const Icon(Icons.refresh),
+          ),
+          const SizedBox(width: 6),
+        ],
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -32,7 +39,6 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
 
         return Column(
           children: [
-            // ================= TAB =================
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -55,8 +61,6 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                 ],
               ),
             ),
-
-            // ================= LIST =================
             Expanded(
               child: list.isEmpty
                   ? const Center(
@@ -70,15 +74,20 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                       itemCount: list.length,
                       itemBuilder: (_, i) {
                         final o = list[i];
-                        final status = o['status'] as String;
+                        final status = (o['status'] ?? 'received').toString();
 
                         return GestureDetector(
-                          onTap: () {
-                            Get.dialog(
+                          onTap: () async {
+                            final result = await Get.dialog<bool>(
                               const AdminOrderDetailView(),
                               arguments: o['id'],
                               barrierColor: Colors.black.withOpacity(0.65),
                             );
+
+                            // ✅ kalau dialog ditutup, refresh list biar pasti update
+                            if (result == true) {
+                              await controller.fetchOrders();
+                            }
                           },
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 14),
@@ -97,7 +106,6 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // ID
                                 Text(
                                   'Order ID',
                                   style: TextStyle(
@@ -105,7 +113,7 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                                   ),
                                 ),
                                 Text(
-                                  o['id'],
+                                  o['id'].toString(),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -113,10 +121,7 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
-
                                 const SizedBox(height: 6),
-
-                                // STATUS
                                 Text(
                                   controller.statusLabel(status),
                                   style: const TextStyle(
@@ -124,12 +129,9 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-
                                 const SizedBox(height: 12),
-
                                 Row(
                                   children: [
-                                    // TOTAL
                                     Expanded(
                                       child: Text(
                                         'Rp${o['total']}',
@@ -140,8 +142,6 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                                         ),
                                       ),
                                     ),
-
-                                    // BUTTON
                                     ElevatedButton(
                                       onPressed: controller.canAdvance(status)
                                           ? () => controller.advanceStatus(o)
@@ -154,7 +154,9 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
                                         foregroundColor:
                                             const Color(0xFF1C4A0B),
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 18, vertical: 10),
+                                          horizontal: 18,
+                                          vertical: 10,
+                                        ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(14),
@@ -184,8 +186,6 @@ class AdminOrdersView extends GetView<AdminOrdersController> {
     );
   }
 }
-
-/* ================= TAB ================= */
 
 class _Tab extends StatelessWidget {
   final String label;

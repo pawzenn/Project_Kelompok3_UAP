@@ -113,7 +113,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                         // Judul dengan shadow
                         Text(
-                          '🍃 Warung Lalapan 🍃',
+                          'Lalapan \nBang Ajey ',
                           style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.w900,
@@ -147,7 +147,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             ),
                           ),
                           child: Text(
-                            'Cita Rasa Tradisional • Kehangatan Rumah',
+                            'Pesan • Bayar • Ambil',
                             style: TextStyle(
                               fontSize: 13,
                               color: Color(0xFFFFD700),
@@ -162,7 +162,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                         // Deskripsi
                         Text(
-                          'Nikmati kelezatan masakan tradisional\ndengan bumbu racikan turun-temurun',
+                          'Lalapan autentik, praktis dipesan lewat aplikasi.',
                           style: TextStyle(
                             fontSize: 15,
                             color: Colors.white.withOpacity(0.9),

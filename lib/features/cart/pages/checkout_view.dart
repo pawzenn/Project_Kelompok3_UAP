@@ -14,10 +14,8 @@ class CheckoutView extends StatefulWidget {
 }
 
 class _CheckoutViewState extends State<CheckoutView> {
-  // ✅ pastikan pakai instance yang sama
-  final CartController cart = Get.isRegistered<CartController>()
-      ? Get.find<CartController>()
-      : Get.put(CartController());
+  // ✅ ambil instance cart yang dibuat di HomeBinding
+  final CartController cart = Get.find<CartController>();
 
   final alamatC = TextEditingController();
   final catatanC = TextEditingController();
@@ -53,21 +51,35 @@ class _CheckoutViewState extends State<CheckoutView> {
     try {
       isLoadingLokasi.value = true;
 
+      // ✅ 1) pastikan permission & service beres di LocationService
       final pos = await LocationService.getCurrentPosition();
+
       userLat = pos.latitude;
       userLng = pos.longitude;
 
-      final addr = await LocationService.reverseGeocode(
-        lat: pos.latitude,
-        lng: pos.longitude,
-      );
+      // ✅ 2) reverse geocode (kalau gagal, fallback lat,lng)
+      String addr = '';
+      try {
+        addr = await LocationService.reverseGeocode(
+          lat: pos.latitude,
+          lng: pos.longitude,
+        );
+      } catch (_) {
+        addr = '';
+      }
+
+      if (addr.trim().isEmpty) {
+        addr =
+            'Lokasi: ${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
+      }
 
       alamatC.text = addr;
-      setState(() {});
+
+      if (mounted) setState(() {});
     } catch (e) {
       Get.snackbar(
         'Lokasi',
-        'Gagal mengambil lokasi otomatis. Isi alamat manual ya.',
+        'Gagal mengambil lokasi otomatis. Pastikan izin lokasi aktif & GPS menyala.\nIsi alamat manual ya.',
         snackPosition: SnackPosition.TOP,
       );
     } finally {
@@ -278,8 +290,6 @@ class _CheckoutViewState extends State<CheckoutView> {
           style: TextStyle(color: _lime, fontWeight: FontWeight.w900),
         ),
       ),
-
-      // ✅ penting: Obx membungkus semua yang baca cart.items dan cart.totalPrice
       body: Obx(() {
         final total = cart.totalPrice;
 
@@ -299,7 +309,6 @@ class _CheckoutViewState extends State<CheckoutView> {
                 ),
               ),
               const SizedBox(height: 12),
-
               if (cart.items.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -378,8 +387,6 @@ class _CheckoutViewState extends State<CheckoutView> {
                                 ),
                               ),
                               const SizedBox(height: 10),
-
-                              // ✅ qty control - sinkron dengan CartView + CartController
                               Row(
                                 children: [
                                   _QtyBtn(
@@ -430,10 +437,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                     ),
                   );
                 }).toList(),
-
               const SizedBox(height: 16),
-
-              // ✅ KODE PROMO
               const Text(
                 'Kode Promo',
                 style: TextStyle(
@@ -444,10 +448,7 @@ class _CheckoutViewState extends State<CheckoutView> {
               ),
               const SizedBox(height: 10),
               _PromoBox(controller: promoC),
-
               const SizedBox(height: 16),
-
-              // ✅ ALAMAT
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -486,10 +487,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                 minLines: 2,
                 maxLines: 4,
               ),
-
               const SizedBox(height: 16),
-
-              // ✅ CATATAN
               const Text(
                 'Catatan untuk Penjual',
                 style: TextStyle(
@@ -505,10 +503,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                 minLines: 2,
                 maxLines: 4,
               ),
-
               const SizedBox(height: 16),
-
-              // ✅ METODE BAYAR
               const Text(
                 'Metode Pembayaran',
                 style: TextStyle(
@@ -535,10 +530,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                     selected: metodeBayar.value == 'QRIS',
                     onTap: () => metodeBayar.value = 'QRIS',
                   )),
-
               const SizedBox(height: 18),
-
-              // ✅ BUTTON BUAT PESANAN (LOGIKA TETAP)
               SizedBox(
                 height: 56,
                 child: ElevatedButton(
@@ -546,8 +538,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                     backgroundColor: _lime,
                     foregroundColor: _bg,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+                        borderRadius: BorderRadius.circular(18)),
                   ),
                   onPressed: () async {
                     final alamat = alamatC.text.trim();
@@ -560,7 +551,6 @@ class _CheckoutViewState extends State<CheckoutView> {
                       return;
                     }
 
-                    // ✅ POPUP pembayaran sesuai pilihan
                     if (metodeBayar.value == 'TRANSFER') {
                       await _showTransferDialog();
                     } else if (metodeBayar.value == 'QRIS') {
@@ -645,13 +635,6 @@ class _QtyBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: _lime,
           borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Icon(icon, color: _bg, size: 24),
       ),
@@ -672,13 +655,6 @@ class _PromoBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: _gold.withOpacity(0.90),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: TextField(

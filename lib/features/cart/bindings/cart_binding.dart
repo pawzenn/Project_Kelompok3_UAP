@@ -1,9 +1,9 @@
 import 'package:get/get.dart';
-import '../controller/cart_controller.dart';
 
 class CartBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<CartController>(() => CartController(), fenix: true);
+    // ❌ Jangan daftarkan CartController di sini
+    // CartController hanya didaftarkan di HomeBinding
   }
 }

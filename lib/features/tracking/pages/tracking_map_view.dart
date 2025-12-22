@@ -6,10 +6,10 @@ import 'package:latlong2/latlong.dart';
 import '../controller/tracking_controller.dart';
 import '/core/config/resto_location.dart';
 
-// ✅ Color Scheme (TOP-LEVEL supaya bisa dipakai semua widget di file ini)
+// ✅ Color Scheme
 const Color _bgGreen = Color(0xFF144100);
 const Color _cardGreen = Color(0xFF22590A);
-const Color _gold = Color(0xFFD4941B); // orange gold
+const Color _gold = Color(0xFFD4941B);
 const Color _darkCard = Color(0xFF1A3008);
 const Color _lime = Color(0xFFE6F06A);
 
@@ -39,7 +39,6 @@ class TrackingMapView extends GetView<TrackingController> {
 
         return CustomScrollView(
           slivers: [
-            // ✅ SliverAppBar aman (no overflow)
             SliverAppBar(
               backgroundColor: Colors.transparent,
               expandedHeight: 120,
@@ -64,7 +63,7 @@ class TrackingMapView extends GetView<TrackingController> {
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(16, 28, 16, 12),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min, // ✅ FIX overflow
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -91,7 +90,6 @@ class TrackingMapView extends GetView<TrackingController> {
                 ),
               ),
             ),
-
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               sliver: SliverList(
@@ -99,14 +97,14 @@ class TrackingMapView extends GetView<TrackingController> {
                   _OrderHeaderNew(order: controller.order),
                   const SizedBox(height: 18),
 
-                  // ✅ Status tiles
+                  // ✅ Status tiles (READ ONLY)
                   Obx(() => _StatusTileNew(
                         title: 'Pesanan Diterima',
                         subtitle: 'Pesanan kamu sudah masuk ke resto',
                         icon: Icons.receipt_long_rounded,
                         done: controller.statusIndex.value >= 0,
                         active: controller.statusIndex.value == 0,
-                        onTap: () => controller.setStatus(0),
+                        onTap: null, // ✅ disable
                       )),
                   Obx(() => _StatusTileNew(
                         title: 'Sedang Diproses',
@@ -114,7 +112,7 @@ class TrackingMapView extends GetView<TrackingController> {
                         icon: Icons.restaurant_rounded,
                         done: controller.statusIndex.value >= 1,
                         active: controller.statusIndex.value == 1,
-                        onTap: () => controller.setStatus(1),
+                        onTap: null, // ✅ disable
                       )),
                   Obx(() => _StatusTileNew(
                         title: 'Siap Diambil',
@@ -122,8 +120,9 @@ class TrackingMapView extends GetView<TrackingController> {
                         icon: Icons.check_circle_rounded,
                         done: controller.statusIndex.value >= 2,
                         active: controller.statusIndex.value == 2,
-                        onTap: () => controller.setStatus(2),
+                        onTap: null, // ✅ disable
                       )),
+
                   const SizedBox(height: 18),
 
                   // ✅ MAP
@@ -424,7 +423,7 @@ class _StatusTileNew extends StatelessWidget {
   final IconData icon;
   final bool done;
   final bool active;
-  final VoidCallback onTap;
+  final VoidCallback? onTap; // ✅ nullable
 
   const _StatusTileNew({
     required this.title,
@@ -432,7 +431,7 @@ class _StatusTileNew extends StatelessWidget {
     required this.icon,
     required this.done,
     required this.active,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
@@ -441,6 +440,7 @@ class _StatusTileNew extends StatelessWidget {
     final Color borderColor =
         active ? _lime : Colors.white.withValues(alpha: 0.10);
 
+    // ✅ kalau onTap null, tile tidak interaktif
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),

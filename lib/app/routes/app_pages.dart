@@ -12,7 +12,6 @@ import '../../features/home/bindings/home_binding.dart';
 
 import '../../features/cart/pages/cart_view.dart';
 import '../../features/cart/pages/checkout_view.dart';
-import '../../features/cart/bindings/cart_binding.dart';
 
 import '../../features/orders/page/orders_view.dart';
 import '../../features/orders/bindings/orders_binding.dart';
@@ -26,9 +25,8 @@ import '../../features/profile/pages/profile_view.dart';
 import '../../features/profile/bindings/profile_binding.dart';
 import '../../features/promo/pages/promo_view.dart';
 import '../../features/promo/bindings/promo_binding.dart';
-import '../../features/admin/pages/admin_orders_view.dart';
-import '../../features/admin/bindings/admin_binding.dart';
 import '../../features/admin/pages/admin_shell_view.dart';
+import '../../features/admin/bindings/admin_binding.dart';
 import '../../features/notifications/pages/notifications_view.dart';
 
 import 'app_routes.dart';
@@ -57,22 +55,21 @@ class AppPages {
       binding: AuthBinding(),
     ),
 
-    // ✅ HOME harus pakai HomeBinding, bukan AuthBinding
+    // ✅ HOME: cart dibuat di HomeBinding
     GetPage(
       name: AppRoutes.home,
       page: () => const HomeView(),
       binding: HomeBinding(),
     ),
 
+    // ✅ CART & CHECKOUT: jangan binding apapun (biar gak bikin instance baru)
     GetPage(
       name: AppRoutes.cart,
       page: () => const CartView(),
-      binding: CartBinding(),
     ),
     GetPage(
       name: AppRoutes.checkout,
       page: () => const CheckoutView(),
-      binding: CartBinding(),
     ),
 
     GetPage(
@@ -101,6 +98,7 @@ class AppPages {
       page: () => const AdminShellView(),
       binding: AdminBinding(),
     ),
+
     GetPage(
       name: AppRoutes.notifications,
       page: () => const NotificationsView(),

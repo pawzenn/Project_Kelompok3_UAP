@@ -8,10 +8,8 @@ class CartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Aman: kalau controller belum ada, bikin sekali
-    final CartController cart = Get.isRegistered<CartController>()
-        ? Get.find<CartController>()
-        : Get.put(CartController());
+    // ✅ HARUS single instance dari HomeBinding
+    final CartController cart = Get.find<CartController>();
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 5, 82, 6),
@@ -143,7 +141,6 @@ class CartView extends StatelessWidget {
                         const SizedBox(width: 10),
                         Column(
                           children: [
-                            // Hapus item
                             InkWell(
                               onTap: () => cart.remove(p.id),
                               borderRadius: BorderRadius.circular(999),
@@ -160,8 +157,6 @@ class CartView extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 10),
-
-                            // Qty control
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -192,8 +187,6 @@ class CartView extends StatelessWidget {
                 },
               ),
             ),
-
-            // Footer total + checkout
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
               decoration: const BoxDecoration(

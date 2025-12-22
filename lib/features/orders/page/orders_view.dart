@@ -331,7 +331,7 @@ String _formatRupiah(num v) {
 String _formatDateShort(String raw) {
   try {
     final dt = DateTime.parse(raw).toLocal();
-    return DateFormat('dd/MMM/yyyy', 'id_ID').format(dt);
+    return DateFormat('id_ID').format(dt);
   } catch (_) {
     return raw.isEmpty ? '-' : raw;
   }

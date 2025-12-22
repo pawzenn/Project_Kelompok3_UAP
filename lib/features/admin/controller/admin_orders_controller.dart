@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import '../../../services/supabase/supabase_service.dart';
+import '../../../services/api_service.dart';
 
 class AdminOrdersController extends GetxController {
   final RxBool isLoading = false.obs;
@@ -17,17 +17,16 @@ class AdminOrdersController extends GetxController {
   }
 
   // ======================
-  // FETCH ORDERS
+  // FETCH ORDERS (BACKEND)
   // ======================
   Future<void> fetchOrders() async {
     try {
       isLoading.value = true;
       error.value = '';
 
-      final res = await SupabaseService.instance.client
-          .from('orders')
-          .select('id, total, status, created_at');
-
+      // optional: ambil semua status, lalu difilter oleh tab UI
+      // (biar tab switching ga request ulang)
+      final res = await ApiService.fetchAdminOrders();
       orders.assignAll(List<Map<String, dynamic>>.from(res));
     } catch (e) {
       error.value = e.toString();
@@ -69,33 +68,34 @@ class AdminOrdersController extends GetxController {
   // ======================
   List<Map<String, dynamic>> get filteredOrders {
     return orders
-        .where((o) => statusToIndex(o['status']) == tabIndex.value)
+        .where((o) =>
+            statusToIndex((o['status'] ?? 'received').toString()) ==
+            tabIndex.value)
         .toList();
   }
 
   void setTab(int i) => tabIndex.value = i;
 
   // ======================
-  // UPDATE STATUS
+  // UPDATE STATUS (BACKEND)
   // ======================
   Future<void> advanceStatus(Map<String, dynamic> order) async {
-    final currentStatus = order['status'] as String;
+    final currentStatus = (order['status'] ?? 'received').toString();
     if (currentStatus == 'ready') return;
 
     final nextStatus = indexToStatus(statusToIndex(currentStatus) + 1);
 
     try {
       // optimistic update
-      _updateLocal(order['id'], nextStatus);
+      _updateLocal(order['id'].toString(), nextStatus);
 
-      await SupabaseService.instance.client
-          .from('orders')
-          .update({'status': nextStatus}).eq('id', order['id']);
-
-      Get.snackbar(
-        'Status',
-        'Pesanan diubah ke ${statusLabel(nextStatus)}',
+      // backend akan validasi transisi + update supabase + kirim notif
+      await ApiService.updateOrderStatus(
+        orderId: order['id'].toString(),
+        status: nextStatus,
       );
+
+      Get.snackbar('Status', 'Pesanan diubah ke ${statusLabel(nextStatus)}');
     } catch (e) {
       await fetchOrders(); // rollback
       Get.snackbar('Gagal', e.toString());
@@ -103,7 +103,7 @@ class AdminOrdersController extends GetxController {
   }
 
   void _updateLocal(String id, String status) {
-    final idx = orders.indexWhere((o) => o['id'] == id);
+    final idx = orders.indexWhere((o) => o['id'].toString() == id);
     if (idx == -1) return;
 
     final updated = Map<String, dynamic>.from(orders[idx]);

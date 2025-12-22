@@ -117,6 +117,7 @@ class TrackingController extends GetxController {
           order['status'] = newStatus;
           order.refresh();
 
+          // ✅ statusIndex HANYA diubah dari stream/admin
           statusIndex.value = _parseStatusToIndex(newStatus);
         });
   }
@@ -137,6 +138,7 @@ class TrackingController extends GetxController {
       order['status'] = newStatus;
       order.refresh();
 
+      // ✅ statusIndex HANYA diubah dari DB
       statusIndex.value = _parseStatusToIndex(newStatus);
     } catch (_) {}
   }
@@ -160,9 +162,6 @@ class TrackingController extends GetxController {
     }
   }
 
-  void setStatus(int i) {
-    if (i < 0) i = 0;
-    if (i > 2) i = 2;
-    statusIndex.value = i;
-  }
+  // ❌ DIHAPUS: user tidak boleh mengubah status manual
+  // void setStatus(int i) { ... }
 }

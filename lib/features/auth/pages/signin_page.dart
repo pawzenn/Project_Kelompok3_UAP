@@ -60,7 +60,7 @@ class _SignInPageState extends State<SignInPage>
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -74,8 +74,6 @@ class _SignInPageState extends State<SignInPage>
               padding: const EdgeInsets.all(24),
               children: [
                 const SizedBox(height: 10),
-
-                // Tombol Back dengan style
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
@@ -89,14 +87,12 @@ class _SignInPageState extends State<SignInPage>
                     ),
                     child: IconButton(
                       onPressed: () => Get.back(),
-                      icon: Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back_rounded,
+                          color: Colors.white),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
-                // Icon dengan glow effect
                 Center(
                   child: Container(
                     width: 100,
@@ -105,20 +101,20 @@ class _SignInPageState extends State<SignInPage>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0xFFFFD700).withOpacity(0.3),
+                          color: const Color(0xFFFFD700).withOpacity(0.3),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
                       ],
                     ),
                     child: Container(
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [Color(0xFFFFD700), Color(0xFFffa500)],
                         ),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.login_rounded,
                         size: 50,
                         color: Color(0xFF2D5016),
@@ -126,11 +122,8 @@ class _SignInPageState extends State<SignInPage>
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
-                // Judul
-                Text(
+                const Text(
                   'Selamat Datang! 👋',
                   style: TextStyle(
                     fontSize: 32,
@@ -140,10 +133,8 @@ class _SignInPageState extends State<SignInPage>
                   ),
                   textAlign: TextAlign.center,
                 ),
-
                 const SizedBox(height: 12),
-
-                Text(
+                const Text(
                   'Masuk untuk melanjutkan',
                   style: TextStyle(
                     fontSize: 16,
@@ -152,14 +143,11 @@ class _SignInPageState extends State<SignInPage>
                   ),
                   textAlign: TextAlign.center,
                 ),
-
                 const SizedBox(height: 40),
-
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Email Field dengan style modern
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.95),
@@ -168,7 +156,7 @@ class _SignInPageState extends State<SignInPage>
                             BoxShadow(
                               color: Colors.black.withOpacity(0.1),
                               blurRadius: 20,
-                              offset: Offset(0, 10),
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
@@ -176,22 +164,23 @@ class _SignInPageState extends State<SignInPage>
                           controller: _emailC,
                           keyboardType: TextInputType.emailAddress,
                           autofillHints: const [AutofillHints.email],
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Color(0xFF2D5016),
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
                           decoration: InputDecoration(
                             labelText: 'Email',
-                            labelStyle: TextStyle(color: Color(0xFF6B8E23)),
+                            labelStyle:
+                                const TextStyle(color: Color(0xFF6B8E23)),
                             prefixIcon: Container(
-                              margin: EdgeInsets.all(12),
-                              padding: EdgeInsets.all(8),
+                              margin: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Color(0xFFFFD700).withOpacity(0.2),
+                                color: const Color(0xFFFFD700).withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.email_rounded,
                                 color: Color(0xFF6B8E23),
                                 size: 20,
@@ -201,7 +190,7 @@ class _SignInPageState extends State<SignInPage>
                               borderRadius: BorderRadius.circular(20),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 20,
                             ),
@@ -209,10 +198,7 @@ class _SignInPageState extends State<SignInPage>
                           validator: _validateEmail,
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
-                      // Password Field
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.95),
@@ -221,7 +207,7 @@ class _SignInPageState extends State<SignInPage>
                             BoxShadow(
                               color: Colors.black.withOpacity(0.1),
                               blurRadius: 20,
-                              offset: Offset(0, 10),
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
@@ -229,22 +215,23 @@ class _SignInPageState extends State<SignInPage>
                           controller: _passC,
                           obscureText: _obscure,
                           autofillHints: const [AutofillHints.password],
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Color(0xFF2D5016),
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
                           decoration: InputDecoration(
                             labelText: 'Password',
-                            labelStyle: TextStyle(color: Color(0xFF6B8E23)),
+                            labelStyle:
+                                const TextStyle(color: Color(0xFF6B8E23)),
                             prefixIcon: Container(
-                              margin: EdgeInsets.all(12),
-                              padding: EdgeInsets.all(8),
+                              margin: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Color(0xFFFFD700).withOpacity(0.2),
+                                color: const Color(0xFFFFD700).withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.lock_rounded,
                                 color: Color(0xFF6B8E23),
                                 size: 20,
@@ -254,7 +241,7 @@ class _SignInPageState extends State<SignInPage>
                               borderRadius: BorderRadius.circular(20),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 20,
                             ),
@@ -265,32 +252,29 @@ class _SignInPageState extends State<SignInPage>
                                 _obscure
                                     ? Icons.visibility_rounded
                                     : Icons.visibility_off_rounded,
-                                color: Color(0xFF6B8E23),
+                                color: const Color(0xFF6B8E23),
                               ),
                             ),
                           ),
                           validator: _validatePassword,
                         ),
                       ),
-
                       const SizedBox(height: 40),
-
-                      // Tombol Login dengan gradient
                       Obx(() {
                         final loading = auth.isLoading.value;
                         return Container(
                           width: double.infinity,
                           height: 60,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
+                            gradient: const LinearGradient(
                               colors: [Color(0xFFFFD700), Color(0xFFffa500)],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Color(0xFFFFD700).withOpacity(0.4),
+                                color: const Color(0xFFFFD700).withOpacity(0.4),
                                 blurRadius: 20,
-                                offset: Offset(0, 8),
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
@@ -302,11 +286,15 @@ class _SignInPageState extends State<SignInPage>
                                   : () async {
                                       if (!_formKey.currentState!.validate())
                                         return;
+
                                       try {
                                         await auth.login(
-                                          email: _emailC.text,
+                                          email: _emailC.text.trim(),
                                           password: _passC.text,
                                         );
+
+                                        // ✅ WAJIB: cek admin via BACKEND (bukan Supabase)
+                                        await auth.refreshRoleFromBackend();
 
                                         if (auth.isAdmin.value) {
                                           Get.offAllNamed(
@@ -329,7 +317,7 @@ class _SignInPageState extends State<SignInPage>
                               borderRadius: BorderRadius.circular(20),
                               child: Center(
                                 child: loading
-                                    ? SizedBox(
+                                    ? const SizedBox(
                                         width: 24,
                                         height: 24,
                                         child: CircularProgressIndicator(
@@ -337,7 +325,7 @@ class _SignInPageState extends State<SignInPage>
                                           color: Color(0xFF2D5016),
                                         ),
                                       )
-                                    : Row(
+                                    : const Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
@@ -351,10 +339,8 @@ class _SignInPageState extends State<SignInPage>
                                             ),
                                           ),
                                           SizedBox(width: 8),
-                                          Icon(
-                                            Icons.arrow_forward_rounded,
-                                            color: Color(0xFF2D5016),
-                                          ),
+                                          Icon(Icons.arrow_forward_rounded,
+                                              color: Color(0xFF2D5016)),
                                         ],
                                       ),
                               ),
@@ -362,10 +348,7 @@ class _SignInPageState extends State<SignInPage>
                           ),
                         );
                       }),
-
                       const SizedBox(height: 30),
-
-                      // Divider
                       Row(
                         children: [
                           Expanded(
@@ -375,12 +358,11 @@ class _SignInPageState extends State<SignInPage>
                             ),
                           ),
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
                               'atau',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                              ),
+                                  color: Colors.white.withOpacity(0.7)),
                             ),
                           ),
                           Expanded(
@@ -391,17 +373,14 @@ class _SignInPageState extends State<SignInPage>
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 30),
-
-                      // Link ke Register dengan style
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(
-                            color: Color(0xFFFFD700).withOpacity(0.3),
+                            color: const Color(0xFFFFD700).withOpacity(0.3),
                             width: 1,
                           ),
                         ),
@@ -417,7 +396,7 @@ class _SignInPageState extends State<SignInPage>
                             ),
                             GestureDetector(
                               onTap: () => Get.offNamed(AppRoutes.register),
-                              child: Text(
+                              child: const Text(
                                 'Daftar Sekarang',
                                 style: TextStyle(
                                   color: Color(0xFFFFD700),
@@ -433,8 +412,7 @@ class _SignInPageState extends State<SignInPage>
                     ],
                   ),
                 ),
-
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
               ],
             ),
           ),

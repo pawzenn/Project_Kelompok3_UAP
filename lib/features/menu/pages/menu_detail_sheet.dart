@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 
 import '/data/models/product.dart';
 import '../../cart/controller/cart_controller.dart';
-import '../../../app/routes/app_routes.dart';
 
 class MenuDetailSheet extends StatefulWidget {
   final Product product;
@@ -50,47 +49,44 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
     super.dispose();
   }
 
-  Future<void> _close() async {
-    await _anim.reverse();
-    if (mounted) Get.back();
+  void _closeFast() {
+    if (Get.isOverlaysOpen) {
+      Get.back(); // tutup bottomsheet
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
+
+    // ✅ Cart instance tunggal dari HomeBinding
     final cart = Get.find<CartController>();
 
     final w = MediaQuery.of(context).size.width;
     final dialogW = (w * 0.88).clamp(320.0, 440.0);
-
-    // ✅ FOTO LEBIH BESAR + sedikit turun
     final imageSize = (dialogW * 0.48).clamp(150.0, 200.0);
-
-    // overlap masih 40%, tapi posisi dibuat sedikit lebih turun (jadi top tidak terlalu minus)
     final overlapDown = imageSize * 0.40;
-    final imageTop = -(imageSize * 0.48); // sebelumnya 0.60 (terlalu naik)
+    final imageTop = -(imageSize * 0.48);
 
     return Material(
       type: MaterialType.transparency,
       child: Stack(
         children: [
-          // blur background
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
               child: Container(color: Colors.black.withOpacity(0.18)),
             ),
           ),
-
-          // tap outside close
           Positioned.fill(
             child: GestureDetector(
-              onTap: _close,
+              onTap: _closeFast,
               behavior: HitTestBehavior.opaque,
               child: const SizedBox(),
             ),
           ),
-
           Center(
             child: FadeTransition(
               opacity: _fade,
@@ -105,11 +101,9 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          // ✅ CARD lebih panjang + opacity 45%
                           Container(
                             padding: EdgeInsets.fromLTRB(
                               18,
-                              // ruang atas dibuat lebih rapat (nama lebih dekat ke foto)
                               16 + overlapDown + (imageSize * 0.28),
                               18,
                               18,
@@ -130,7 +124,6 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // ✅ NAMA lebih dekat (margin kecil)
                                 Text(
                                   p.name,
                                   textAlign: TextAlign.center,
@@ -143,8 +136,6 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-
-                                // ✅ Deskripsi diberi jarak supaya qty & button turun
                                 Padding(
                                   padding:
                                       const EdgeInsets.symmetric(horizontal: 6),
@@ -160,11 +151,7 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                     ),
                                   ),
                                 ),
-
-                                // ✅ jarak lebih besar agar qty & button sedikit kebawah
                                 const SizedBox(height: 22),
-
-                                // Qty control
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -175,10 +162,7 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                       },
                                     ),
                                     const SizedBox(width: 14),
-                                    AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 180),
-                                      curve: Curves.easeOut,
+                                    Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 18,
                                         vertical: 10,
@@ -207,10 +191,7 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                     ),
                                   ],
                                 ),
-
                                 const SizedBox(height: 18),
-
-                                // Add to cart
                                 SizedBox(
                                   width: double.infinity,
                                   height: 52,
@@ -226,14 +207,13 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                     onPressed: () {
                                       cart.add(p, qty: qty);
 
+                                      _closeFast(); // ✅ balik ke Home (sheet nutup)
+
                                       Get.snackbar(
                                         'Keranjang',
                                         'Berhasil menambahkan ${p.name} x$qty',
                                         snackPosition: SnackPosition.BOTTOM,
                                       );
-
-                                      _close();
-                                      Get.offAllNamed(AppRoutes.home);
                                     },
                                     child: Text(
                                       'Tambah ke Keranjang • Rp${p.price} x$qty',
@@ -244,14 +224,10 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                                     ),
                                   ),
                                 ),
-
-                                // ✅ extra space biar card terasa lebih panjang kebawah
                                 const SizedBox(height: 6),
                               ],
                             ),
                           ),
-
-                          // ✅ Circle image (lebih besar + turun sedikit)
                           Positioned(
                             top: imageTop,
                             left: (dialogW - imageSize) / 2,
@@ -290,8 +266,6 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                               ),
                             ),
                           ),
-
-                          // Exit button
                           Positioned(
                             top: 10,
                             right: 10,
@@ -307,7 +281,7 @@ class _MenuDetailSheetState extends State<MenuDetailSheet>
                               ),
                               child: IconButton(
                                 padding: EdgeInsets.zero,
-                                onPressed: _close,
+                                onPressed: _closeFast,
                                 icon: const Icon(
                                   Icons.close_rounded,
                                   color: Colors.black,
@@ -345,13 +319,6 @@ class _QtyButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFE6F06A),
           borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.14),
-              blurRadius: 10,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Icon(icon, color: Colors.black, size: 28),
       ),
